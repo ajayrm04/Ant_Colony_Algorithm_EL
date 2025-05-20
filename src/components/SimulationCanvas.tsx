@@ -226,13 +226,14 @@ const SimulationCanvas: React.FC = () => {
       // Auto-connect new node to nearby opposite type nodes within 200px
       nodes.forEach(otherNode => {
         const dist = Math.hypot(otherNode.x - x, otherNode.y - y);
-        if(type===NodeType.ROUTER){
-          addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) });
+        
+        if(type===NodeType.ROUTER && dist<=500){
+          addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist),sourcetype:type ,targettype:otherNode.type});
         }
         else{
           if(dist<200){
             if(otherNode.type===NodeType.ROUTER){
-              addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) });
+              addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist), sourcetype:type ,targettype:otherNode.type});
             }
           }
         }

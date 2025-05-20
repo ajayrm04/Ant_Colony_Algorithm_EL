@@ -15,6 +15,8 @@ export interface Edge {
   source: number;
   target: number;
   weight: number;
+  sourcetype:NodeType;
+  targettype:NodeType;
 }
 
 export interface AntPosition {

@@ -40,7 +40,7 @@ const ControlPanel: React.FC = () => {
             const dist = Math.hypot(otherNode.x - x_n, otherNode.y - y_n);
             if (dist < 200) {
               if (otherNode.type === NodeType.ROUTER) {
-                 addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) });
+                 addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) ,sourcetype:type ,targettype:otherNode.type });
               }
             }
           });
@@ -64,9 +64,10 @@ const ControlPanel: React.FC = () => {
     // Add edges from the new router to all existing routers and devices
     nodes.forEach((node) => {
       const dist = Math.hypot(node.x - newRouter.x, node.y - newRouter.y);
+      if(dist<=500){
       if (node.type === 'router' || node.type === 'device') {
-         addEdge({ source: newRouterId, target: node.id, weight: Math.floor(dist) });
-      }
+         addEdge({ source: newRouterId, target: node.id, weight: Math.floor(dist),sourcetype:newRouter.type ,targettype:node.type });
+      }}
     });
   };
 

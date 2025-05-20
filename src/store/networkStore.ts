@@ -1,6 +1,6 @@
 // networkStore.ts
 import { create } from 'zustand';
-import { AntPosition, Edge, Node } from '../types/networkTypes';
+import { AntPosition, Edge, Node, NodeType } from '../types/networkTypes';
 
 interface NetworkState {
   nodes: Node[];
@@ -92,8 +92,10 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
 
     const initialPheromones: Record<string, number> = {};
     edges.forEach(edge => {
-      initialPheromones[`${edge.source}-${edge.target}`] = 0.1;
+      if(edge.targettype===NodeType.ROUTER){
+        initialPheromones[`${edge.source}-${edge.target}`] = 0.1;
       initialPheromones[`${edge.target}-${edge.source}`] = 0.1;
+      }
     });
 
     set({
@@ -105,7 +107,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
       antPositions: [],
       iterations: 0
     });
-
+    
     // Clear any existing interval first
     if (get().simulationInterval) {
       clearInterval(get().simulationInterval!);
@@ -145,7 +147,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
       const {
         selectedSourceNode,
         selectedTargetNode,
-        edges,
+      
         nodes,
         evaporationRate,
         pheromoneDeposit,
@@ -274,11 +276,17 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     const { simulationInterval } = get();
     if (simulationInterval) {
       clearInterval(simulationInterval);
+      
     }
     set({
       simulationRunning: false,
       simulationInterval: null,
-      antPositions: []
+      antPositions: [],
+      pheromones: {},
+      bestPath: [],
+      bestPathDistance: Infinity,
+      bestPathNodes: [],
+      iterations: 0
     });
   },
 
