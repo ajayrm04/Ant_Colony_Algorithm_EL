@@ -2,15 +2,18 @@ import React from 'react';
 import { useNetworkStore } from '../store/networkStore';
 import { Play, Pause, RefreshCw, Trash2, Settings, Router, Laptop } from 'lucide-react';
 import SettingsDialog from './SettingsDialog';
+import { NodeType, type Node } from '../types/networkTypes';
+
 
 const ControlPanel: React.FC = () => {
-  const { 
+  const {
     simulationRunning, 
     startSimulation, 
     stopSimulation,
     resetSimulation,
     clearNetwork,
     addNode,
+    addEdge,
     selectedSourceNode,
     selectedTargetNode,
     nodes
@@ -21,26 +24,49 @@ const ControlPanel: React.FC = () => {
   const handleAddDevice = () => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return;
-
+    const x_n=Math.random() * (canvas.width - 100) + 50;
+    const y_n= Math.random() * (canvas.height - 100) + 50;
+    const newId = Date.now();
+    const type =NodeType.DEVICE
     addNode({
       id: Date.now(),
-      x: Math.random() * (canvas.width - 100) + 50,
-      y: Math.random() * (canvas.height - 100) + 50,
+      x: x_n,
+      y:y_n,
       label: `D${nodes.length + 1}`,
-      type: 'device'
+      type: type
     });
+
+    nodes.forEach(otherNode => {
+            const dist = Math.hypot(otherNode.x - x_n, otherNode.y - y_n);
+            if (dist < 200) {
+              if (otherNode.type === NodeType.ROUTER) {
+                 addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) });
+              }
+            }
+          });
   };
 
   const handleAddRouter = () => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return;
 
-    addNode({
-      id: Date.now(),
+    // Add the new router node
+    const newRouterId = Date.now();
+    const newRouter: Node = {
+      id: newRouterId,
       x: Math.random() * (canvas.width - 100) + 50,
       y: Math.random() * (canvas.height - 100) + 50,
       label: `R${nodes.length + 1}`,
-      type: 'router'
+      type: NodeType.ROUTER
+    };
+    addNode(newRouter);
+
+    // Add edges from the new router to all existing routers and devices
+    nodes.forEach((node) => {
+      const dist = Math.hypot(node.x - newRouter.x, node.y - newRouter.y);
+      if (node.type === 'router' || node.type === 'device') {
+         addEdge({ source: newRouterId, target: node.id, weight: Math.floor(dist) });
+      }
     });
   };
 

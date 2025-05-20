@@ -1,4 +1,3 @@
-import React from 'react';
 import SimulationCanvas from './components/SimulationCanvas';
 import ControlPanel from './components/ControlPanel';
 import Header from './components/Header';
