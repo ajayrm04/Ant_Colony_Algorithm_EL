@@ -1,39 +1,63 @@
 // networkStore.ts
-import { create } from 'zustand';
-import { AntPosition, Edge, Node, NodeType } from '../types/networkTypes';
+import { create } from "zustand"
+import {
+  type AntPosition,
+  type Edge,
+  type Node,
+  NodeType,
+  SimulationMode,
+  type TrafficPattern,
+} from "../types/networkTypes"
+import { updateAntPositions as updateAntPositionsUtil } from "../utils/animationUtils"
+import { findShortestPath } from "../utils/antColonyAlgorithm"
+import { calculateEdgeTraffic } from "../utils/trafficUtils"
 
 interface NetworkState {
-  nodes: Node[];
-  edges: Edge[];
-  selectedSourceNode: number | null;
-  selectedTargetNode: number | null;
-  simulationRunning: boolean;
-  simulationInterval: number | null;
-  pheromones: Record<string, number>;
-  bestPath: string[];
-  bestPathDistance: number;
-  bestPathNodes: number[];
-  antPositions: AntPosition[];
-  iterations: number;
-  evaporationRate: number;
-  pheromoneDeposit: number;
-  numAnts: number;
-  antSpeed: number;
+  nodes: Node[]
+  edges: Edge[]
+  selectedSourceNode: number | null
+  selectedTargetNode: number | null
+  simulationRunning: boolean
+  simulationInterval: number | null
+  pheromones: Record<string, number>
+  bestPath: string[]
+  bestPathDistance: number
+  bestPathNodes: number[]
+  antPositions: AntPosition[]
+  iterations: number
+  evaporationRate: number
+  pheromoneDeposit: number
+  numAnts: number
+  antSpeed: number
+  simulationPhase: "exploration" | "convergence" | "complete" | "idle"
+  activeEdges: Set<string>
+  trafficPatterns: TrafficPattern[]
+  simulationMode: SimulationMode
+  showTraffic: boolean
+  showCongestion: boolean
+  trafficWeight: number
 
-  addEdge: (edge: Edge) => void;
-  addNode: (node: Node) => void;
-  updateNodePosition: (index: number, x: number, y: number) => void;
-  setSelectedSourceNode: (nodeId: number | null) => void;
-  setSelectedTargetNode: (nodeId: number | null) => void;
-  startSimulation: () => void;
-  stopSimulation: () => void;
-  setEvaporationRate: (rate: number) => void;
-  setPheromoneDeposit: (amount: number) => void;
-  setNumAnts: (num: number) => void;
-  setAntSpeed: (speed: number) => void;
-  resetSimulation: () => void;
-  updateAntPositions: (positions: AntPosition[]) => void;
-  clearNetwork: () => void;
+  addEdge: (edge: Edge) => void
+  addNode: (node: Node) => void
+  updateNodePosition: (index: number, x: number, y: number) => void
+  setSelectedSourceNode: (nodeId: number | null) => void
+  setSelectedTargetNode: (nodeId: number | null) => void
+  startSimulation: () => void
+  stopSimulation: () => void
+  setEvaporationRate: (rate: number) => void
+  setPheromoneDeposit: (amount: number) => void
+  setNumAnts: (num: number) => void
+  setAntSpeed: (speed: number) => void
+  resetSimulation: () => void
+  updateAntPositions: (positions: AntPosition[]) => void
+  clearNetwork: () => void
+  addTrafficPattern: (pattern: TrafficPattern) => void
+  updateTrafficPattern: (id: number, updates: Partial<TrafficPattern>) => void
+  removeTrafficPattern: (id: number) => void
+  setSimulationMode: (mode: SimulationMode) => void
+  setShowTraffic: (show: boolean) => void
+  setShowCongestion: (show: boolean) => void
+  setTrafficWeight: (weight: number) => void
 }
 
 export const useNetworkStore = create<NetworkState>((set, get) => ({
@@ -45,7 +69,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   simulationInterval: null,
   pheromones: {},
   bestPath: [],
-  bestPathDistance: Infinity,
+  bestPathDistance: Number.POSITIVE_INFINITY,
   bestPathNodes: [],
   antPositions: [],
   iterations: 0,
@@ -53,280 +77,329 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   pheromoneDeposit: 1.0,
   numAnts: 10,
   antSpeed: 5,
+  simulationPhase: "idle",
+  activeEdges: new Set<string>(),
+  trafficPatterns: [],
+  simulationMode: SimulationMode.STANDARD,
+  showTraffic: false,
+  showCongestion: false,
+  trafficWeight: 2.0,
 
   addNode: (node: Node) => {
-    set(state => ({
-      nodes: [...state.nodes, node]
-    }));
+    set((state) => ({
+      nodes: [...state.nodes, node],
+    }))
   },
 
   addEdge: (edge: Edge) => {
-    console.log('edge added')
-    set(state => ({
-      edges: [...state.edges, edge]
-    }));
+    set((state) => ({
+      edges: [...state.edges, edge],
+    }))
   },
 
   updateNodePosition: (index: number, x: number, y: number) => {
-    set(state => ({
-      nodes: state.nodes.map((node, i) =>
-        i === index ? { ...node, x, y } : node
-      )
-    }));
+    set((state) => ({
+      nodes: state.nodes.map((node, i) => (i === index ? { ...node, x, y } : node)),
+    }))
   },
 
   setSelectedSourceNode: (nodeId: number | null) => {
-    set({ selectedSourceNode: nodeId });
+    set({ selectedSourceNode: nodeId })
   },
 
   setSelectedTargetNode: (nodeId: number | null) => {
-    set({ selectedTargetNode: nodeId });
+    set({ selectedTargetNode: nodeId })
   },
 
   startSimulation: () => {
-    const { selectedSourceNode, selectedTargetNode, edges, antSpeed } = get();
+    const { selectedSourceNode, selectedTargetNode, edges, antSpeed, trafficPatterns, simulationMode, trafficWeight } =
+      get()
 
     if (selectedSourceNode === null || selectedTargetNode === null || selectedSourceNode === selectedTargetNode) {
-      return;
+      return
     }
 
-    const initialPheromones: Record<string, number> = {};
-    edges.forEach(edge => {
-      if(edge.targettype===NodeType.ROUTER){
-        initialPheromones[`${edge.source}-${edge.target}`] = 0.1;
-      initialPheromones[`${edge.target}-${edge.source}`] = 0.1;
+    // Process traffic patterns and update edge traffic
+    let updatedEdges = [...edges]
+    if (trafficPatterns.length > 0) {
+      updatedEdges = calculateEdgeTraffic(edges, get().nodes, trafficPatterns)
+
+      // Update node congestion based on connected edge traffic
+      const nodeCongestion: Record<number, number> = {}
+
+      updatedEdges.forEach((edge) => {
+        // Add traffic to source node congestion
+        nodeCongestion[edge.source] = (nodeCongestion[edge.source] || 0) + edge.utilization
+
+        // Add traffic to target node congestion
+        nodeCongestion[edge.target] = (nodeCongestion[edge.target] || 0) + edge.utilization
+      })
+
+      // Normalize congestion values
+      const updatedNodes = get().nodes.map((node) => {
+        const connectedEdgesCount = updatedEdges.filter((e) => e.source === node.id || e.target === node.id).length
+
+        // Calculate average congestion for this node
+        const rawCongestion = nodeCongestion[node.id] || 0
+        const normalizedCongestion = connectedEdgesCount > 0 ? Math.min(1, rawCongestion / connectedEdgesCount) : 0
+
+        return {
+          ...node,
+          congestion: normalizedCongestion,
+        }
+      })
+
+      set({ nodes: updatedNodes, edges: updatedEdges })
+    }
+
+    const initialPheromones: Record<string, number> = {}
+    updatedEdges.forEach((edge) => {
+      if (edge.targettype === NodeType.ROUTER) {
+        initialPheromones[`${edge.source}-${edge.target}`] = 0.1
+        initialPheromones[`${edge.target}-${edge.source}`] = 0.1
       }
-    });
+    })
 
     set({
       simulationRunning: true,
       pheromones: initialPheromones,
       bestPath: [],
-      bestPathDistance: Infinity,
+      bestPathDistance: Number.POSITIVE_INFINITY,
       bestPathNodes: [],
       antPositions: [],
-      iterations: 0
-    });
-    
-    // Clear any existing interval first
+      iterations: 0,
+      simulationPhase: "exploration",
+      activeEdges: new Set<string>(),
+    })
+
     if (get().simulationInterval) {
-      clearInterval(get().simulationInterval!);
+      clearInterval(get().simulationInterval!)
     }
 
-    // Exploration phase
     const exploreInterval = setInterval(() => {
-      const state = get();
+      const state = get()
       if (state.iterations >= 20) {
-        clearInterval(exploreInterval);
-        startConvergencePhase();
-        return;
+        clearInterval(exploreInterval)
+        set({ simulationPhase: "convergence" })
+        startConvergencePhase()
+        return
       }
-      runAntIteration(0.5, 2);
-      set(s => ({ iterations: s.iterations + 1 }));
-    }, 1000 / antSpeed);
+      runAntIteration(0.5, 2)
+      set((s) => ({ iterations: s.iterations + 1 }))
+    }, 1000 / antSpeed)
 
-    // Store interval ID
-    set({ simulationInterval: exploreInterval as unknown as number });
+    set({ simulationInterval: exploreInterval as unknown as number })
 
     function startConvergencePhase() {
       const convergeInterval = setInterval(() => {
-        const state = get();
+        const state = get()
         if (state.iterations >= 100) {
-          clearInterval(convergeInterval);
-          set({ simulationRunning: false, simulationInterval: null });
-          return;
+          clearInterval(convergeInterval)
+          set({
+            simulationRunning: false,
+            simulationInterval: null,
+            simulationPhase: "complete",
+          })
+          return
         }
-        runAntIteration(1.5, 1);
-        set(s => ({ iterations: s.iterations + 1 }));
-      }, 1000 / antSpeed);
+        runAntIteration(1.5, 1)
+        set((s) => ({ iterations: s.iterations + 1 }))
+      }, 1000 / antSpeed)
 
-      set({ simulationInterval: convergeInterval as unknown as number });
+      set({ simulationInterval: convergeInterval as unknown as number })
     }
 
     function runAntIteration(alpha: number, beta: number) {
       const {
         selectedSourceNode,
         selectedTargetNode,
-      
         nodes,
+        edges,
         evaporationRate,
         pheromoneDeposit,
         numAnts,
         pheromones,
-        bestPathDistance
-      } = get();
+        bestPathDistance,
+        simulationMode,
+        trafficWeight,
+      } = get()
 
-      const updatedPheromones = { ...pheromones };
-      const antPaths: { path: number[]; distance: number }[] = [];
-      const newAntPositions: AntPosition[] = [];
+      const updatedPheromones = { ...pheromones }
+      const antPaths: { path: number[]; distance: number }[] = []
+      const newAntPositions: AntPosition[] = []
+      const activeEdges = new Set<string>()
 
-      // Evaporate pheromones
-      Object.keys(updatedPheromones).forEach(key => {
-        updatedPheromones[key] *= (1 - evaporationRate);
-      });
+      Object.keys(updatedPheromones).forEach((key) => {
+        updatedPheromones[key] *= 1 - evaporationRate
+      })
 
-      for (let i = 0; i < numAnts; i++) {
-        const pathData = constructAntPath(
-          selectedSourceNode!,
-          selectedTargetNode!,
-          alpha,
-          beta,
-          updatedPheromones
-        );
+      // Use the ant colony algorithm to find paths
+      const result = findShortestPath(
+        nodes,
+        edges,
+        selectedSourceNode!,
+        selectedTargetNode!,
+        1, // Just one iteration
+        numAnts,
+        evaporationRate,
+        0.1, // Initial pheromone
+        alpha,
+        beta,
+        simulationMode,
+        trafficWeight,
+      )
 
-        if (pathData) {
-          antPaths.push(pathData);
-          // Place ant at start of path with progress 0 (start moving)
-          if (pathData.path.length > 1) {
+      if (result.path.length > 0 && result.distance < bestPathDistance) {
+        const pathEdges = result.path.slice(0, -1).map((id, i) => `${id}-${result.path[i + 1]}`)
+        set({
+          bestPath: pathEdges,
+          bestPathDistance: result.distance,
+          bestPathNodes: result.path,
+        })
+      }
+
+      // Create ant positions for visualization
+      if (result.path.length > 1) {
+        for (let i = 0; i < Math.min(numAnts, 5); i++) {
+          // Limit visual ants
+          const randomStartIndex = Math.floor(Math.random() * (result.path.length - 1))
+          const fromNode = nodes.find((n) => n.id === result.path[randomStartIndex])
+          const toNode = nodes.find((n) => n.id === result.path[randomStartIndex + 1])
+
+          if (fromNode && toNode) {
             newAntPositions.push({
-              from: pathData.path[0],
-              to: pathData.path[1],
+              from: result.path[randomStartIndex],
+              to: result.path[randomStartIndex + 1],
               progress: 0,
-              x: nodes.find(n => n.id === pathData.path[0])?.x || 0,
-              y: nodes.find(n => n.id === pathData.path[0])?.y || 0,
-            });
+              x: fromNode.x,
+              y: fromNode.y,
+            })
+
+            // Mark edge as active
+            activeEdges.add(`${result.path[randomStartIndex]}-${result.path[randomStartIndex + 1]}`)
+            activeEdges.add(`${result.path[randomStartIndex + 1]}-${result.path[randomStartIndex]}`)
           }
         }
       }
-
-      antPaths.forEach(({ path, distance }) => {
-        const depositAmount = pheromoneDeposit / distance;
-        for (let i = 0; i < path.length - 1; i++) {
-          const edgeKey = `${path[i]}-${path[i + 1]}`;
-          const reverseEdgeKey = `${path[i + 1]}-${path[i]}`;
-          updatedPheromones[edgeKey] = (updatedPheromones[edgeKey] || 0) + depositAmount;
-          updatedPheromones[reverseEdgeKey] = (updatedPheromones[reverseEdgeKey] || 0) + depositAmount;
-        }
-
-        if (distance < bestPathDistance) {
-          const pathEdges = path.slice(0, -1).map((id, i) => `${id}-${path[i + 1]}`);
-          set({
-            bestPath: pathEdges,
-            bestPathDistance: distance,
-            bestPathNodes: path
-          });
-        }
-      });
 
       set({
         pheromones: updatedPheromones,
-        antPositions: newAntPositions
-      });
-    }
-
-    function constructAntPath(
-      start: number,
-      end: number,
-      alpha: number,
-      beta: number,
-      pheromones: Record<string, number>
-    ): { path: number[]; distance: number } | null {
-      const { edges } = get();
-      let currentNode = start;
-      const visited = new Set<number>([currentNode]);
-      const path = [currentNode];
-      let totalDistance = 0;
-
-      while (currentNode !== end) {
-        const neighbors = edges
-          .filter(edge => (edge.source === currentNode || edge.target === currentNode) &&
-            !visited.has(edge.source === currentNode ? edge.target : edge.source))
-          .map(edge => {
-            const neighbor = edge.source === currentNode ? edge.target : edge.source;
-            const pheromone = pheromones[`${currentNode}-${neighbor}`] || 0.1;
-            return { nodeId: neighbor, weight: edge.weight, pheromone };
-          });
-
-        if (neighbors.length === 0) return null;
-
-        const total = neighbors.reduce(
-          (sum, n) => sum + Math.pow(n.pheromone, alpha) * Math.pow(1 / n.weight, beta),
-          0
-        );
-
-        const probabilities = neighbors.map(n => ({
-          nodeId: n.nodeId,
-          weight: n.weight,
-          probability: Math.pow(n.pheromone, alpha) * Math.pow(1 / n.weight, beta) / total
-        }));
-
-        const rand = Math.random();
-        let sum = 0;
-        let selected = probabilities[0];
-
-        for (const n of probabilities) {
-          sum += n.probability;
-          if (rand <= sum) {
-            selected = n;
-            break;
-          }
-        }
-
-        currentNode = selected.nodeId;
-        visited.add(currentNode);
-        path.push(currentNode);
-        totalDistance += selected.weight;
-      }
-
-      return { path, distance: totalDistance };
+        antPositions: newAntPositions,
+        activeEdges,
+      })
     }
   },
 
   stopSimulation: () => {
-    const { simulationInterval } = get();
+    const { simulationInterval } = get()
     if (simulationInterval) {
-      clearInterval(simulationInterval);
-      
+      clearInterval(simulationInterval)
     }
     set({
       simulationRunning: false,
       simulationInterval: null,
       antPositions: [],
-      pheromones: {},
-      bestPath: [],
-      bestPathDistance: Infinity,
-      bestPathNodes: [],
-      iterations: 0
-    });
+      simulationPhase: "idle",
+      activeEdges: new Set<string>(),
+    })
   },
 
   setEvaporationRate: (rate: number) => {
-    set({ evaporationRate: rate });
+    set({ evaporationRate: rate })
   },
 
   setPheromoneDeposit: (amount: number) => {
-    set({ pheromoneDeposit: amount });
+    set({ pheromoneDeposit: amount })
   },
 
   setNumAnts: (num: number) => {
-    set({ numAnts: num });
+    set({ numAnts: num })
   },
 
   setAntSpeed: (speed: number) => {
-    set({ antSpeed: speed });
+    set({ antSpeed: speed })
   },
 
   updateAntPositions: (positions: AntPosition[]) => {
-    set({ antPositions: positions });
+    const { nodes, edges, antSpeed } = get()
+    const updatedPositions = updateAntPositionsUtil(positions, nodes, edges, antSpeed)
+
+    const allFinished = updatedPositions.every((ant) => ant.progress >= 1)
+
+    if (allFinished) {
+      set({ antPositions: [] })
+    } else {
+      set({ antPositions: updatedPositions })
+    }
   },
 
   resetSimulation: () => {
-    set((state) => ({
-      nodes: state.nodes.map((node) => ({
-        ...node,
-        // example logic: clear temporary highlights or reset state
-        visited: false,
-        path: [],
-      })),
-      simulationRunning: false
-    }));
+    set({
+      pheromones: {},
+      bestPath: [],
+      bestPathDistance: Number.POSITIVE_INFINITY,
+      bestPathNodes: [],
+      antPositions: [],
+      iterations: 0,
+      simulationRunning: false,
+      simulationPhase: "idle",
+      activeEdges: new Set<string>(),
+    })
   },
 
   clearNetwork: () => {
     set({
       nodes: [],
+      edges: [],
+      selectedSourceNode: null,
+      selectedTargetNode: null,
       simulationRunning: false,
-      // clear links, paths, etc.
-    });
+      simulationInterval: null,
+      pheromones: {},
+      bestPath: [],
+      bestPathDistance: Number.POSITIVE_INFINITY,
+      bestPathNodes: [],
+      antPositions: [],
+      iterations: 0,
+      simulationPhase: "idle",
+      activeEdges: new Set<string>(),
+      trafficPatterns: [],
+    })
   },
-}));
+
+  addTrafficPattern: (pattern: TrafficPattern) => {
+    set((state) => ({
+      trafficPatterns: [...state.trafficPatterns, pattern],
+    }))
+  },
+
+  updateTrafficPattern: (id: number, updates: Partial<TrafficPattern>) => {
+    set((state) => ({
+      trafficPatterns: state.trafficPatterns.map((pattern) =>
+        pattern.id === id ? { ...pattern, ...updates } : pattern,
+      ),
+    }))
+  },
+
+  removeTrafficPattern: (id: number) => {
+    set((state) => ({
+      trafficPatterns: state.trafficPatterns.filter((pattern) => pattern.id !== id),
+    }))
+  },
+
+  setSimulationMode: (mode: SimulationMode) => {
+    set({ simulationMode: mode })
+  },
+
+  setShowTraffic: (show: boolean) => {
+    set({ showTraffic: show })
+  },
+
+  setShowCongestion: (show: boolean) => {
+    set({ showCongestion: show })
+  },
+
+  setTrafficWeight: (weight: number) => {
+    set({ trafficWeight: weight })
+  },
+}))

@@ -1,16 +1,21 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useNetworkStore } from '../store/networkStore';
-import { NodeType } from '../types/networkTypes';
+"use client"
+
+import type React from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
+import { useNetworkStore } from "../store/networkStore"
+import { NodeType } from "../types/networkTypes"
+import { drawEdgeWithPheromone, drawAnt, drawNodeRipple, drawNode } from "../utils/animationUtils"
 
 const SimulationCanvas: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const animationRef = useRef<number | null>(null)
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedNode, setDraggedNode] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false)
+  const [draggedNode, setDraggedNode] = useState<number | null>(null)
 
-  // Destructure all needed data and actions from your store
   const {
+    startSimulation,
     nodes,
     edges,
     addNode,
@@ -25,262 +30,299 @@ const SimulationCanvas: React.FC = () => {
     bestPath,
     antPositions,
     updateAntPositions,
-  } = useNetworkStore();
+    iterations,
+    simulationPhase,
+    activeEdges,
+    showTraffic,
+    showCongestion,
+  } = useNetworkStore()
 
-  // Resize and scale canvas for device pixel ratio
   const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    const canvas = canvasRef.current
+    const container = containerRef.current
+    if (!canvas || !container) return
 
-    const dpr = window.devicePixelRatio || 1;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const dpr = window.devicePixelRatio || 1
+    const width = container.clientWidth
+    const height = container.clientHeight
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
 
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const ctx = canvas.getContext("2d")
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    drawNetwork();
-  }, [nodes, edges, pheromones, bestPath, selectedSourceNode, selectedTargetNode, antPositions]);
+    drawNetwork()
+  }, [
+    nodes,
+    edges,
+    pheromones,
+    bestPath,
+    selectedSourceNode,
+    selectedTargetNode,
+    antPositions,
+    showTraffic,
+    showCongestion,
+  ])
 
-  // Attach resize listener and run once on mount
   useEffect(() => {
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [resizeCanvas]);
+    window.addEventListener("resize", resizeCanvas)
+    resizeCanvas()
+    return () => window.removeEventListener("resize", resizeCanvas)
+  }, [resizeCanvas])
 
-  // Main animation loop to update canvas continuously
   useEffect(() => {
-    let animationId: number;
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+    }
 
     const animate = () => {
-      drawNetwork();
+      drawNetwork()
 
-      if (simulationRunning) {
-        updateAntPositions(antPositions);
+      if (simulationRunning && antPositions.length > 0) {
+        updateAntPositions(antPositions)
       }
 
-      animationId = requestAnimationFrame(animate);
-    };
+      animationRef.current = requestAnimationFrame(animate)
+    }
 
-    animate();
+    animationRef.current = requestAnimationFrame(animate)
 
-    return () => cancelAnimationFrame(animationId);
-  }, [nodes, edges, pheromones, bestPath, selectedSourceNode, selectedTargetNode, antPositions, simulationRunning]);
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [
+    nodes,
+    edges,
+    pheromones,
+    bestPath,
+    selectedSourceNode,
+    selectedTargetNode,
+    antPositions,
+    simulationRunning,
+    simulationPhase,
+    showTraffic,
+    showCongestion,
+  ])
 
-  // Draw nodes, edges, ants and UI elements on canvas
   const drawNetwork = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
 
-    // Clear entire canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Draw edges with pheromone effects and best path highlights
-    edges.forEach(edge => {
-      const source = nodes.find(n => n.id === edge.source);
-      const target = nodes.find(n => n.id === edge.target);
-      if (!source || !target) return;
+    // Draw edges
+    edges.forEach((edge) => {
+      const source = nodes.find((n) => n.id === edge.source)
+      const target = nodes.find((n) => n.id === edge.target)
+      if (!source || !target) return
 
-      const key = `${edge.source}-${edge.target}`;
-      const pheromone = pheromones[key] || 0;
-      const lineWidth = 1 + Math.min(5, pheromone * 3);
+      const key = `${edge.source}-${edge.target}`
+      const pheromone = pheromones[key] || 0
+      const isInBestPath = bestPath.includes(key) || bestPath.includes(`${edge.target}-${edge.source}`)
+      const isActive = activeEdges.has(key) || activeEdges.has(`${edge.target}-${edge.source}`)
 
-      // Glow effect for high pheromone edges
-      if (pheromone > 0.3) {
-        ctx.beginPath();
-        ctx.moveTo(source.x, source.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.strokeStyle = `rgba(100, 149, 237, ${0.1 + Math.min(0.3, pheromone * 0.5)})`;
-        ctx.lineWidth = lineWidth + 4;
-        ctx.stroke();
+      drawEdgeWithPheromone(ctx, source, target, pheromone, isInBestPath, edge, isActive, showTraffic)
+    })
+
+    // Draw nodes
+    nodes.forEach((node) => {
+      drawNode(ctx, node, node.id === selectedSourceNode, node.id === selectedTargetNode, showCongestion)
+    })
+
+    // Draw ants and their effects
+    antPositions.forEach((ant) => {
+      drawAnt(ctx, ant.x, ant.y, ant.progress)
+
+      // Add ripple effect when ant reaches target
+      if (ant.progress > 0.9) {
+        const toNode = nodes.find((n) => n.id === ant.to)
+        if (toNode) {
+          drawNodeRipple(ctx, toNode.x, toNode.y, (ant.progress - 0.9) * 10)
+        }
       }
+    })
 
-      ctx.beginPath();
-      ctx.moveTo(source.x, source.y);
-      ctx.lineTo(target.x, target.y);
+    // Draw simulation status
+    if (simulationRunning || simulationPhase === "complete") {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+      ctx.fillRect(10, 10, 180, 50)
 
-      // Highlight edges that are part of the best path
-      if (
-        bestPath.includes(key) ||
-        bestPath.includes(`${edge.target}-${edge.source}`)
-      ) {
-        ctx.shadowColor = 'rgba(0, 255, 0, 0.5)';
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-        ctx.lineWidth = 3;
-      } else {
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = `rgba(100, 149, 237, ${0.2 + Math.min(0.8, pheromone)})`;
-        ctx.lineWidth = lineWidth;
-      }
-
-      ctx.stroke();
-
-      // Reset shadow
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-
-      // Draw weight label near the middle of the edge
-      const midX = (source.x + target.x) / 2;
-      const midY = (source.y + target.y) / 2;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.font = '10px Arial';
-      ctx.fillText(edge.weight.toString(), midX, midY);
-    });
-
-    // Draw nodes with highlights for selected and type-specific colors
-    nodes.forEach(node => {
-      ctx.beginPath();
-
-      ctx.shadowColor =
-        node.id === selectedSourceNode ? '#4ade80' : // green highlight for source
-        node.id === selectedTargetNode ? '#f87171' : // red highlight for target
-        node.type === NodeType.ROUTER ? '#60a5fa' :  // blue for routers
-        '#a78bfa';                                   // purple for devices
-
-      ctx.shadowBlur = 15;
-      ctx.arc(node.x, node.y, 15, 0, 2 * Math.PI);
+      ctx.fillStyle = "white"
+      ctx.font = "14px Arial"
+      ctx.textAlign = "left"
+      ctx.fillText(`Iteration: ${iterations}/100`, 20, 30)
 
       ctx.fillStyle =
-        node.id === selectedSourceNode ? '#4ade80' :
-        node.id === selectedTargetNode ? '#f87171' :
-        node.type === NodeType.ROUTER ? '#60a5fa' :
-        '#a78bfa';
+        simulationPhase === "exploration" ? "#FFD700" : simulationPhase === "convergence" ? "#00FFFF" : "#00FF00"
+      ctx.fillText(`Phase: ${simulationPhase}`, 20, 50)
+    }
+  }
 
-      ctx.fill();
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-
-      // Draw node label centered
-      ctx.fillStyle = 'white';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(node.label, node.x, node.y);
-    });
-
-    // Draw ants as small glowing circles
-    antPositions.forEach(ant => {
-      ctx.beginPath();
-      ctx.arc(ant.x, ant.y, 4, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(255, 215, 0, 0.8)'; // gold color
-      ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
-      ctx.shadowBlur = 10;
-      ctx.fill();
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-    });
-  };
-
-  // Handle adding nodes or selecting source/target on double click
   const handleDoubleClick = (e: React.MouseEvent) => {
-    if (simulationRunning) return;
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Check if clicked near existing node
-    const clickedNodeIndex = nodes.findIndex(node =>
-      Math.hypot(node.x - x, node.y - y) < 15
-    );
+    const clickedNodeIndex = nodes.findIndex((node) => Math.hypot(node.x - x, node.y - y) < 15)
 
     if (clickedNodeIndex !== -1) {
-      // Select target if ctrl/meta key held, else select source node
       if (e.ctrlKey || e.metaKey) {
-        setSelectedTargetNode(nodes[clickedNodeIndex].id);
+        setSelectedTargetNode(nodes[clickedNodeIndex].id)
       } else {
-        setSelectedSourceNode(nodes[clickedNodeIndex].id);
+        setSelectedSourceNode(nodes[clickedNodeIndex].id)
       }
     } else {
-      // Add new node
-      const newId = Date.now();
-      const type = e.shiftKey ? NodeType.ROUTER : NodeType.DEVICE;
+      const newId = Date.now()
+      const type = e.shiftKey ? NodeType.ROUTER : NodeType.DEVICE
       const newNode = {
         id: newId,
         x,
         y,
-        label: `N${nodes.length + 1}`,
+        label:
+          type === NodeType.ROUTER
+            ? `R${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`
+            : `D${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`,
         type,
-      };
+        congestion: 0,
+      }
 
-      addNode(newNode);
+      addNode(newNode)
 
-      // Auto-connect new node to nearby opposite type nodes within 200px
-      nodes.forEach(otherNode => {
-        const dist = Math.hypot(otherNode.x - x, otherNode.y - y);
-        
-        if(type===NodeType.ROUTER && dist<=500){
-          addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist),sourcetype:type ,targettype:otherNode.type});
-        }
-        else{
-          if(dist<200){
-            if(otherNode.type===NodeType.ROUTER){
-              addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist), sourcetype:type ,targettype:otherNode.type});
-            }
+      nodes.forEach((otherNode) => {
+        const dist = Math.hypot(otherNode.x - x, otherNode.y - y)
+
+        if (type === NodeType.ROUTER && dist <= 500) {
+          addEdge({
+            source: newId,
+            target: otherNode.id,
+            weight: Math.floor(dist),
+            sourcetype: type,
+            targettype: otherNode.type,
+            traffic: 0,
+            bandwidth: 100,
+            utilization: 0,
+          })
+        } else if (dist < 200) {
+          if (otherNode.type === NodeType.ROUTER) {
+            addEdge({
+              source: newId,
+              target: otherNode.id,
+              weight: Math.floor(dist),
+              sourcetype: type,
+              targettype: otherNode.type,
+              traffic: 0,
+              bandwidth: 100,
+              utilization: 0,
+            })
           }
         }
-        // if (dist < 200) {
-        //   if (type === NodeType.ROUTER && otherNode.type === NodeType.DEVICE) {
-        //     addEdge({ source: newId, target: otherNode.id, weight: Math.floor(dist) });
-        //   } else if (type === NodeType.DEVICE && otherNode.type === NodeType.ROUTER) {
-        //     addEdge({ source: otherNode.id, target: newId, weight: Math.floor(dist) });
-        //   }
-        // }
-      });
+      })
     }
-  };
+  }
 
-  // Start dragging a node if clicked on
   const handleMouseDown = (e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
-    const clickedIndex = nodes.findIndex(
-      node => Math.hypot(node.x - x, node.y - y) < 15
-    );
+    const clickedIndex = nodes.findIndex((node) => Math.hypot(node.x - x, node.y - y) < 15)
 
     if (clickedIndex !== -1) {
-      setIsDragging(true);
-      setDraggedNode(clickedIndex);
+      setIsDragging(true)
+      setDraggedNode(clickedIndex)
     }
-  };
+  }
 
-  // Move dragged node along with mouse
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || draggedNode === null) return;
+    if (!isDragging || draggedNode === null) return
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
-    updateNodePosition(draggedNode, x, y);
-  };
+    updateNodePosition(draggedNode, x, y)
+  }
 
-  // Stop dragging on mouse up or leave
   const handleMouseUp = () => {
+    if (draggedNode !== null) {
+      const movedNode = nodes[draggedNode];
+
+      // Recalculate and update weights of all connected edges
+      edges.forEach(edge => {
+        if (edge.source === movedNode.id || edge.target === movedNode.id) {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          if (sourceNode && targetNode) {
+            const newWeight = Math.floor(
+              Math.hypot(sourceNode.x - targetNode.x, sourceNode.y - targetNode.y)
+            );
+            edge.weight = newWeight;
+          }
+        }
+      });
+
+      // Find and connect to nearby nodes based on type and distance
+      nodes.forEach(otherNode => {
+        if (otherNode.id === movedNode.id) return;
+
+        const dist = Math.hypot(movedNode.x - otherNode.x, movedNode.y - otherNode.y);
+
+        if (movedNode.type === NodeType.ROUTER && dist <= 500) {
+          // Check if edge already exists
+          const exists = edges.some(
+            edge =>
+              (edge.source === movedNode.id && edge.target === otherNode.id) ||
+              (edge.source === otherNode.id && edge.target === movedNode.id)
+          );
+          if (!exists) {
+            addEdge({
+              source: movedNode.id,
+              target: otherNode.id,
+              weight: Math.floor(dist),
+              sourcetype: movedNode.type,
+              targettype: otherNode.type,
+              traffic: 0,
+              bandwidth: 100,
+              utilization: 0,
+            });
+          }
+        } else if (movedNode.type === NodeType.DEVICE && dist < 200 && otherNode.type === NodeType.ROUTER) {
+          // Check if edge already exists
+          const exists = edges.some(
+            edge =>
+              (edge.source === movedNode.id && edge.target === otherNode.id) ||
+              (edge.source === otherNode.id && edge.target === movedNode.id)
+          );
+          if (!exists) {
+            addEdge({
+              source: movedNode.id,
+              target: otherNode.id,
+              weight: Math.floor(dist),
+              sourcetype: movedNode.type,
+              targettype: otherNode.type,
+              traffic: 0,
+              bandwidth: 100,
+              utilization: 0,
+            });
+          }
+        }
+      });
+    }
+
     setIsDragging(false);
     setDraggedNode(null);
   };
@@ -304,7 +346,7 @@ const SimulationCanvas: React.FC = () => {
         <p>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SimulationCanvas;
+export default SimulationCanvas

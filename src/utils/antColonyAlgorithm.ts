@@ -1,4 +1,4 @@
-import { Node, Edge } from '../types/networkTypes';
+import { Node, Edge, SimulationMode } from '../types/networkTypes';
 
 /**
  * Finds the shortest path between source and target nodes using Ant Colony Optimization
@@ -15,17 +15,7 @@ import { Node, Edge } from '../types/networkTypes';
  * @param beta Importance of heuristic information (usually 2-5)
  */
 export const findShortestPath = (
-  nodes: Node[],
-  edges: Edge[],
-  sourceId: number,
-  targetId: number,
-  iterations: number = 50,
-  numAnts: number = 10,
-  evaporationRate: number = 0.1,
-  initialPheromone: number = 0.1,
-  alpha: number = 1, 
-  beta: number = 3
-): { path: number[], distance: number } => {
+nodes: Node[], edges: Edge[], sourceId: number, targetId: number, iterations: number = 50, numAnts: number = 10, evaporationRate: number = 0.1, initialPheromone: number = 0.1, alpha: number = 1, beta: number = 3, simulationMode: SimulationMode, trafficWeight: number): { path: number[], distance: number } => {
   // Create adjacency list representation of the graph
   const graph = new Map<number, Map<number, { weight: number, pheromone: number }>>();
   
