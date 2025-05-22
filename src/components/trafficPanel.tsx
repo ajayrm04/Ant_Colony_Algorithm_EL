@@ -3,10 +3,12 @@
 import type React from "react"
 import { useState } from "react"
 import { useNetworkStore } from "../store/networkStore"
-import { Activity, Plus, Trash2 } from "lucide-react"
+import { Activity, Plus, Trash2, Volume } from "lucide-react"
 
 const TrafficPanel: React.FC = () => {
-  const { nodes, trafficPatterns, addTrafficPattern, updateTrafficPattern, removeTrafficPattern, simulationRunning } =
+  const { 
+    edges,nodes, trafficPatterns, addTrafficPattern, updateTrafficPattern, removeTrafficPattern, simulationRunning,adjacencyList
+ } =
     useNetworkStore()
 
   const [newSource, setNewSource] = useState<number | "">("")
@@ -15,6 +17,7 @@ const TrafficPanel: React.FC = () => {
   const [newPriority, setNewPriority] = useState<number>(5)
 
   const handleAddPattern = () => {
+    // console.log("yes")
     if (newSource === "" || newTarget === "" || newSource === newTarget) return
 
     addTrafficPattern({
@@ -24,8 +27,82 @@ const TrafficPanel: React.FC = () => {
       volume: newVolume / 10, // Scale to 0-1
       priority: newPriority,
       active: true,
+      routersInPath:{}
     })
+    
+    const getShortestPathRouters = (sourceId: number, targetId: number) => {
+        // Build adjacency list from nodes
+        const adjacency: Record<number, { id: number; weight: number }[]> = {};
+        // Use adjacencyList from the store
+        Object.keys(adjacencyList).forEach((nodeId) => {
+            adjacency[Number(nodeId)] = adjacencyList[Number(nodeId)].map((neighborId: number) => ({
+                id: neighborId,
+                weight: 1,
+            }));
+        });
+        
+        console.log("hello\n")
+        console.log(adjacency)
+        // Dijkstra's algorithm
+        const distances: Record<number, number> = {};
+        const prev: Record<number, number | null> = {};
+        const visited: Set<number> = new Set();
+        nodes.forEach((node) => {
+            distances[node.id] = Infinity;
+            prev[node.id] = null;
+        });
+        distances[sourceId] = 0;
 
+        while (visited.size < nodes.length) {
+            let u: number | null = null;
+            let minDist = Infinity;
+            for (const nodeId in distances) {
+                if (!visited.has(Number(nodeId)) && distances[nodeId] < minDist) {
+                    minDist = distances[nodeId];
+                    u = Number(nodeId);
+                }
+            }
+            if (u === null || distances[u] === Infinity) break;
+            visited.add(u);
+
+            adjacency[u]?.forEach(({ id: v, weight }) => {
+                if (!visited.has(v)) {
+                    const alt = distances[u] + weight;
+                    if (alt < distances[v]) {
+                        distances[v] = alt;
+                        prev[v] = u;
+                    }
+                }
+            });
+        }
+
+        // Reconstruct path
+        const path: number[] = [];
+        let curr: number | null = targetId;
+        while (curr !== null) {
+            path.unshift(curr);
+            curr = prev[curr];
+        }
+        if (path[0] !== sourceId) return []; // No path found
+        // Exclude source and target, return routers in between
+        return path.slice(1, -1).map((id) => nodes.find((n) => n.id === id));
+    };
+
+    const routersInPath = getShortestPathRouters(Number(newSource), Number(newTarget));
+    updateTrafficPattern(Date.now(), { routersInPath: routersInPath });
+    console.log("Routers in shortest path:", routersInPath);
+    if (Array.isArray(routersInPath) && routersInPath.length > 0) {
+        // Assuming you have access to `edges` from the store or props
+        // If not, you may need to import/use it accordingly
+        const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
+        edges.forEach(edge => {
+            if (routerIds.includes(edge.source || edge.target)) {
+                edge.weight = (edge.weight || 0) + newVolume * 50;
+            }
+        });
+    }
+
+    console.log(newVolume)
     // Reset form
     setNewSource("")
     setNewTarget("")
@@ -38,7 +115,24 @@ const TrafficPanel: React.FC = () => {
   }
 
   const handleRemovePattern = (id: number) => {
+    const pattern = trafficPatterns.find(tp => tp.id === id);
+    console.log(pattern?.volume)
+  if (!pattern) {
     removeTrafficPattern(id)
+    return
+  }
+  const routersInPath = pattern.routersInPath
+  if (Array.isArray(routersInPath) && routersInPath.length > 0) {
+        // Assuming you have access to `edges` from the store or props
+        // If not, you may need to import/use it accordingly
+        const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
+        edges.forEach(edge => {
+            if (routerIds.includes(edge.source || edge.target)) {
+                edge.weight = (edge.weight || 0) - pattern.volume * 500;
+            }
+        });
+    }
+  removeTrafficPattern(id)
   }
 
   return (

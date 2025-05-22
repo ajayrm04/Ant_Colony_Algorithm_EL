@@ -49,6 +49,7 @@ interface NetworkState {
   setNumAnts: (num: number) => void
   setAntSpeed: (speed: number) => void
   resetSimulation: () => void
+  getAdjacencyListWithType:()=>{}
   updateAntPositions: (positions: AntPosition[]) => void
   clearNetwork: () => void
   addTrafficPattern: (pattern: TrafficPattern) => void
@@ -60,7 +61,7 @@ interface NetworkState {
   setTrafficWeight: (weight: number) => void
 }
 
-export const useNetworkStore = create<NetworkState>((set, get) => ({
+export const useNetworkStore = create<NetworkState & { adjacencyList: Record<number, number[]> }>((set, get) => ({
   nodes: [],
   edges: [],
   selectedSourceNode: null,
@@ -84,17 +85,49 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   showTraffic: false,
   showCongestion: false,
   trafficWeight: 2.0,
+  adjacencyList: {},
+
+  // Build adjacency list with node type info (router/device)
+  getAdjacencyListWithType: () => {
+    const { adjacencyList, nodes } = get()
+    const nodeTypeMap = Object.fromEntries(nodes.map((n) => [n.id, n.type]))
+    const result: Record<number, { neighbors: number[]; type: NodeType }> = {}
+    Object.entries(adjacencyList).forEach(([id, neighbors]) => {
+      result[Number(id)] = {
+        neighbors: neighbors as number[],
+        type: nodeTypeMap[Number(id)],
+      }
+    })
+    return result
+  },
 
   addNode: (node: Node) => {
-    set((state) => ({
-      nodes: [...state.nodes, node],
-    }))
+    
+    // Call getAdjacencyListWithType and print the result
+    const adjWithType = get().getAdjacencyListWithType();
+    console.log("Adjacency List With Type (before addNode):", adjWithType);
+    set((state) => {
+      const newAdjacencyList = { ...state.adjacencyList, [node.id]: [] }
+      return {
+        nodes: [...state.nodes, node],
+        adjacencyList: newAdjacencyList,
+      }
+    })
   },
 
   addEdge: (edge: Edge) => {
-    set((state) => ({
-      edges: [...state.edges, edge],
-    }))
+    set((state) => {
+      // Update adjacency list for both source and target
+      const adj = { ...state.adjacencyList }
+      if (!adj[edge.source]) adj[edge.source] = []
+      if (!adj[edge.target]) adj[edge.target] = []
+      if (!adj[edge.source].includes(edge.target)) adj[edge.source].push(edge.target)
+      if (!adj[edge.target].includes(edge.source)) adj[edge.target].push(edge.source)
+      return {
+        edges: [...state.edges, edge],
+        adjacencyList: adj,
+      }
+    })
   },
 
   updateNodePosition: (index: number, x: number, y: number) => {
@@ -364,6 +397,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
       simulationPhase: "idle",
       activeEdges: new Set<string>(),
       trafficPatterns: [],
+      adjacencyList: {},
     })
   },
 
@@ -403,3 +437,7 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     set({ trafficWeight: weight })
   },
 }))
+function getAdjacencyListWithType(): any {
+  throw new Error("Function not implemented.")
+}
+

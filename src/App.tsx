@@ -3,6 +3,7 @@ import ControlPanel from './components/ControlPanel';
 import Header from './components/Header';
 import InfoPanel from './components/InfoPanel';
 import { useNetworkStore } from './store/networkStore';
+import TrafficPanel from './components/trafficPanel';
 
 function App() {
   const { simulationRunning } = useNetworkStore();
@@ -21,7 +22,9 @@ function App() {
         </div>
         <div className="w-full md:w-80 lg:w-96 border-l border-gray-700 bg-gray-800 flex flex-col">
           <ControlPanel />
+          <TrafficPanel/>
           <InfoPanel />
+          
         </div>
       </main>
     </div>

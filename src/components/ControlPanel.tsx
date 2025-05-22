@@ -5,6 +5,7 @@ import { useNetworkStore } from "../store/networkStore"
 import { Play, Pause, RefreshCw, Trash2, Settings, Router, Laptop, BarChart } from "lucide-react"
 import SettingsDialog from "./SettingsDialog"
 import { NodeType, type Node } from "../types/networkTypes"
+import TrafficPanel from "./trafficPanel"
 
 const ControlPanel: React.FC = () => {
   const {
@@ -199,8 +200,11 @@ const ControlPanel: React.FC = () => {
       </div>
 
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+      {/* Show TrafficPanel if showTraffic is true */}
+      
+      {showTraffic && <TrafficPanel />}
     </div>
   )
 }
-
 export default ControlPanel

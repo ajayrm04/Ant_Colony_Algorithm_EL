@@ -38,6 +38,7 @@ export interface TrafficPattern {
   volume: number // Traffic volume
   priority: number // 1-10, higher is more important
   active: boolean
+  routersInPath:{}
 }
 
 export enum SimulationMode {
