@@ -246,34 +246,56 @@ const SimulationCanvas: React.FC = () => {
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || draggedNode === null) return
-
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (!rect) return
-
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-
-    updateNodePosition(draggedNode, x, y)
-  }
+      if (!isDragging || draggedNode === null) return
+  
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect) return
+  
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+  
+      updateNodePosition(draggedNode, x, y)
+  
+      // Update edge weights immediately after node position changes
+      const movedNode = nodes[draggedNode]
+      if (movedNode) {
+        edges.forEach(edge => {
+          if (edge.source === movedNode.id || edge.target === movedNode.id) {
+            const sourceNode = nodes.find(n => n.id === edge.source)
+            const targetNode = nodes.find(n => n.id === edge.target)
+            if (sourceNode && targetNode) {
+              edge.weight = Math.floor(
+                Math.hypot(sourceNode.x - targetNode.x, sourceNode.y - targetNode.y)
+              )
+            }
+          }
+        })
+      }
+    }
 
   const handleMouseUp = () => {
     if (draggedNode !== null) {
       const movedNode = nodes[draggedNode];
 
-      // Recalculate and update weights of all connected edges
-      edges.forEach(edge => {
-        if (edge.source === movedNode.id || edge.target === movedNode.id) {
-          const sourceNode = nodes.find(n => n.id === edge.source);
-          const targetNode = nodes.find(n => n.id === edge.target);
-          if (sourceNode && targetNode) {
-            const newWeight = Math.floor(
-              Math.hypot(sourceNode.x - targetNode.x, sourceNode.y - targetNode.y)
-            );
-            edge.weight = newWeight;
+      
+      // Only update edge weights if the node's position has changed
+      const prevNode = nodes.find((_n, idx) => idx === draggedNode);
+      if (prevNode && (prevNode.x !== movedNode.x || prevNode.y !== movedNode.y)) {
+        // Recalculate and update weights of all connected edges
+        edges.forEach(edge => {
+          if (edge.source === movedNode.id || edge.target === movedNode.id) {
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const targetNode = nodes.find(n => n.id === edge.target);
+            
+            if (sourceNode && targetNode) {
+              const newWeight = Math.floor(
+                Math.hypot(sourceNode.x - targetNode.x, sourceNode.y - targetNode.y)
+              );
+              edge.weight = newWeight;
+            }
           }
-        }
-      });
+        });
+      }
 
       // Find and connect to nearby nodes based on type and distance
       nodes.forEach(otherNode => {

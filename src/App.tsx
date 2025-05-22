@@ -4,13 +4,19 @@ import Header from './components/Header';
 import InfoPanel from './components/InfoPanel';
 import { useNetworkStore } from './store/networkStore';
 import TrafficPanel from './components/trafficPanel';
+import { useState } from 'react';
+import NetworkAnalysisPage from './components/NetworkAnalysisPage';
 
 function App() {
   const { simulationRunning } = useNetworkStore();
+  const [currentPage, setCurrentPage] = useState<'simulation' | 'analysis'>('simulation');
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-      <Header />
+  const renderContent = () => {
+    if (currentPage === 'analysis') {
+      return <NetworkAnalysisPage />;
+    }
+
+    return (
       <main className="flex-1 flex flex-col md:flex-row">
         <div className="flex-1 p-4 relative">
           <SimulationCanvas />
@@ -22,11 +28,17 @@ function App() {
         </div>
         <div className="w-full md:w-80 lg:w-96 border-l border-gray-700 bg-gray-800 flex flex-col">
           <ControlPanel />
-          <TrafficPanel/>
           <InfoPanel />
-          
+          <TrafficPanel/>
         </div>
       </main>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
+      <Header onPageChange={setCurrentPage} currentPage={currentPage} />
+      {renderContent()}
     </div>
   );
 }
