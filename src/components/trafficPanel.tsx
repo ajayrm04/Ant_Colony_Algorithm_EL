@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useNetworkStore } from "../store/networkStore"
-import { Activity, Plus, Trash2, Volume } from "lucide-react"
+import { Activity, Plus, Route, Trash2, Volume } from "lucide-react"
 
 const TrafficPanel: React.FC = () => {
   const { 
@@ -94,9 +94,14 @@ const TrafficPanel: React.FC = () => {
     if (Array.isArray(routersInPath) && routersInPath.length > 0) {
         // Assuming you have access to `edges` from the store or props
         // If not, you may need to import/use it accordingly
+        if(!routersInPath[0]) console.log(routersInPath[0])
+        console.log(edges)
         const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
         edges.forEach(edge => {
-            if (routerIds.includes(edge.source || edge.target)) {
+            if (routerIds.includes(edge.source)) {
+                edge.weight = (edge.weight || 0) + newVolume * 50;
+            }
+            if (routerIds.includes(edge.target)) {
                 edge.weight = (edge.weight || 0) + newVolume * 50;
             }
         });
@@ -127,7 +132,10 @@ const TrafficPanel: React.FC = () => {
         // If not, you may need to import/use it accordingly
         const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
         edges.forEach(edge => {
-            if (routerIds.includes(edge.source || edge.target)) {
+            if (routerIds.includes(edge.source)) {
+                edge.weight = (edge.weight || 0) - pattern.volume * 500;
+            }
+            if (routerIds.includes(edge.target)) {
                 edge.weight = (edge.weight || 0) - pattern.volume * 500;
             }
         });
