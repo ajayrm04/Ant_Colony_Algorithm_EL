@@ -354,18 +354,53 @@ const SimulationCanvas: React.FC = () => {
       ref={containerRef}
       className="relative w-full h-full border border-gray-700 bg-gray-950 rounded-lg overflow-hidden"
     >
+      {/* Grid lines overlay */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ zIndex: 1 }}
+      >
+        {/* Vertical grid lines */}
+        {Array.from({ length: 21 }).map((_, i) => (
+          <line
+            key={`v-${i}`}
+            x1={`${i * 5}%`}
+            y1="0"
+            x2={`${i * 5}%`}
+            y2="100%"
+            stroke="#888"
+            strokeWidth={1.2}
+            opacity={0.35}
+            shapeRendering="crispEdges"
+          />
+        ))}
+        {/* Horizontal grid lines */}
+        {Array.from({ length: 21 }).map((_, i) => (
+          <line
+            key={`h-${i}`}
+            x1="0"
+            y1={`${i * 5}%`}
+            x2="100%"
+            y2={`${i * 5}%`}
+            stroke="#888"
+            strokeWidth={1.2}
+            opacity={0.35}
+            shapeRendering="crispEdges"
+          />
+        ))}
+      </svg>
       <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onDoubleClick={handleDoubleClick}
-        className="w-full h-full cursor-crosshair"
+      ref={canvasRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
+      className="w-full h-full cursor-crosshair"
+      style={{ position: "relative", zIndex: 2 }}
       />
-      <div className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-80 text-xs p-2 rounded text-gray-300 pointer-events-none select-none">
-        <p>Double-click: Add device | Shift + Double-click: Add router</p>
-        <p>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</p>
+      <div className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-80 text-xs p-2 rounded text-gray-300 pointer-events-none select-none" style={{ zIndex: 3 }}>
+      <p>Double-click: Add device | Shift + Double-click: Add router</p>
+      <p>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</p>
       </div>
     </div>
   )
