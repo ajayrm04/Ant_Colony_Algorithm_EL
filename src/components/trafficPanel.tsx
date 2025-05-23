@@ -108,6 +108,7 @@ const TrafficPanel: React.FC = () => {
     }
 
     console.log(newVolume)
+    console.log("Traffic Patterns", JSON.stringify(trafficPatterns, null, 2))
     // Reset form
     setNewSource("")
     setNewTarget("")

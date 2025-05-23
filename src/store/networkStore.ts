@@ -114,7 +114,7 @@ export const useNetworkStore = create<NetworkState & { adjacencyList: Record<num
     
     // Call getAdjacencyListWithType and print the result
     const adjWithType = get().getAdjacencyListWithType();
-    console.log("Adjacency List With Type (before addNode):", adjWithType);
+    
     set((state) => {
       const newAdjacencyList = { ...state.adjacencyList, [node.id]: [] }
       return {
@@ -122,6 +122,20 @@ export const useNetworkStore = create<NetworkState & { adjacencyList: Record<num
         adjacencyList: newAdjacencyList,
       }
     })
+
+    // Print adjacency list with type after adding the new node
+    setTimeout(() => {
+      const adjWithTypeAfter = get().getAdjacencyListWithType();
+      console.log("Adjacency List With Type (after addNode):", JSON.stringify(adjWithTypeAfter, null, 2));
+      // Print all routers in the path (type === NodeType.ROUTER)
+      Object.entries(adjWithTypeAfter).forEach(([id, info]) => {
+        
+          console.log(`Router Node: ${id}`, info);
+        
+      });
+
+    }, 0);
+
   },
 
   addEdge: (edge: Edge) => {
