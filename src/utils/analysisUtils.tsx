@@ -59,87 +59,123 @@ export function generateSampleHistoricalData(nodes: Node[], edges: Edge[], count
  * Generate a random path between source and target nodes
  */
 function generateRandomPath(sourceId: number, targetId: number, nodes: Node[], edges: Edge[]): number[] {
-  const path = [sourceId]
-  let currentId = sourceId
-  const maxHops = 5
-  let hops = 0
+    // Build adjacency list with edge weights (assume weight 1 for all edges)
+    const adjacency: Record<number, { id: number; weight: number }[]> = {}
+    edges.forEach((edge) => {
+        if (!adjacency[edge.source]) adjacency[edge.source] = []
+        if (!adjacency[edge.target]) adjacency[edge.target] = []
+        adjacency[edge.source].push({ id: edge.target, weight: 1 })
+        adjacency[edge.target].push({ id: edge.source, weight: 1 })
+    })
 
-  // Create a map of node connections for quick lookup
-  const connections: Record<number, number[]> = {}
-  edges.forEach((edge) => {
-    if (!connections[edge.source]) connections[edge.source] = []
-    if (!connections[edge.target]) connections[edge.target] = []
+    // Dijkstra's algorithm
+    const distances: Record<number, number> = {}
+    const previous: Record<number, number | null> = {}
+    const visited: Set<number> = new Set()
+    const queue: { id: number; dist: number }[] = []
 
-    connections[edge.source].push(edge.target)
-    connections[edge.target].push(edge.source)
-  })
+    nodes.forEach((node) => {
+        distances[node.id] = node.id === sourceId ? 0 : Infinity
+        previous[node.id] = null
+        queue.push({ id: node.id, dist: distances[node.id] })
+    })
 
-  // Try to find a path to the target
-  while (currentId !== targetId && hops < maxHops) {
-    const possibleNextNodes = connections[currentId] || []
+    while (queue.length > 0) {
+        // Get node with smallest distance
+        queue.sort((a, b) => a.dist - b.dist)
+        const { id: currentId } = queue.shift()!
+        if (currentId === targetId) break
+        if (visited.has(currentId)) continue
+        visited.add(currentId)
 
-    // Filter out nodes already in the path to avoid loops
-    const filteredNodes = possibleNextNodes.filter((id) => !path.includes(id))
-
-    if (filteredNodes.length === 0) break // No valid next hop
-
-    // Prefer the target if it's directly connected
-    if (filteredNodes.includes(targetId)) {
-      currentId = targetId
-    } else {
-      // Otherwise pick a random next hop
-      currentId = filteredNodes[Math.floor(Math.random() * filteredNodes.length)]
+        const neighbors = adjacency[currentId] || []
+        for (const neighbor of neighbors) {
+            if (visited.has(neighbor.id)) continue
+            const alt = distances[currentId] + neighbor.weight
+            if (alt < distances[neighbor.id]) {
+                distances[neighbor.id] = alt
+                previous[neighbor.id] = currentId
+                // Update queue distance
+                const qIdx = queue.findIndex((q) => q.id === neighbor.id)
+                if (qIdx !== -1) queue[qIdx].dist = alt
+            }
+        }
     }
 
-    path.push(currentId)
-    hops++
-  }
-
-  // If we couldn't reach the target, force it as the last hop
-  if (currentId !== targetId) {
-    path.push(targetId)
-  }
-
-  return path
+    // Reconstruct path
+    const path: number[] = []
+    let curr: number | null = targetId
+    while (curr !== null) {
+        path.unshift(curr)
+        curr = previous[curr]
+    }
+    if (path[0] !== sourceId) {
+        // No path found, fallback to direct
+        return [sourceId, targetId]
+    }
+    return path
 }
 
 /**
  * Find optimal router placement based on historical routes
  */
 export function findOptimalRouterPlacement(
-  historicalRoutes: HistoricalRoute[],
-  nodes: Node[],
-  edges: Edge[],
-  filters: { sourceId: number | null; targetId: number | null },
+    historicalRoutes: HistoricalRoute[],
+    nodes: Node[],
+    edges: Edge[],
+    filters: { sourceId: number | null; targetId: number | null },
 ): RouterPlacementSuggestion {
-  // Filter routes based on source/target if specified
-  let filteredRoutes = historicalRoutes
-  if (filters.sourceId !== null) {
-    filteredRoutes = filteredRoutes.filter((route) => route.sourceId === filters.sourceId)
-  }
-  if (filters.targetId !== null) {
-    filteredRoutes = filteredRoutes.filter((route) => route.targetId === filters.targetId)
-  }
+    // Filter routes based on source/target if specified
+    let filteredRoutes = historicalRoutes
+    if (filters.sourceId !== null) {
+        filteredRoutes = filteredRoutes.filter((route) => route.sourceId === filters.sourceId)
+    }
+    if (filters.targetId !== null) {
+        filteredRoutes = filteredRoutes.filter((route) => route.targetId === filters.targetId)
+    }
 
-  // Find traffic hotspots
-  const hotspots = findTrafficHotspots(filteredRoutes, nodes)
+    // Gather all points along congested paths, weighted by congestion
+    const points: { x: number; y: number; weight: number }[] = []
+    filteredRoutes.forEach((route) => {
+        for (let i = 0; i < route.path.length; i++) {
+            const node = nodes.find((n) => n.id === route.path[i])
+            if (node) {
+                points.push({
+                    x: node.x,
+                    y: node.y,
+                    weight: route.congestion + 0.01, // Avoid zero weight
+                })
+            }
+        }
+    })
 
-  // Find the most intense hotspot
-  const mostIntenseHotspot = hotspots.reduce((max, spot) => (spot.intensity > max.intensity ? spot : max), {
-    x: 0,
-    y: 0,
-    intensity: 0,
-    radius: 0,
-  })
+    // Compute weighted centroid
+    let sumX = 0
+    let sumY = 0
+    let totalWeight = 0
+    points.forEach((pt) => {
+        sumX += pt.x * pt.weight
+        sumY += pt.y * pt.weight
+        totalWeight += pt.weight
+    })
 
-  // Calculate improvement metrics if a router was placed at this hotspot
-  const improvementMetrics = calculateImprovementMetrics(mostIntenseHotspot, filteredRoutes, nodes, edges)
+    const centroid = totalWeight > 0
+        ? { x: sumX / totalWeight, y: sumY / totalWeight }
+        : { x: 0, y: 0 }
 
-  return {
-    x: mostIntenseHotspot.x,
-    y: mostIntenseHotspot.y,
-    improvementMetrics,
-  }
+    // Calculate improvement metrics if a router was placed at this centroid
+    const improvementMetrics = calculateImprovementMetrics(
+        { x: centroid.x, y: centroid.y, intensity: 1, radius: 20 },
+        filteredRoutes,
+        nodes,
+        edges,
+    )
+
+    return {
+        x: centroid.x,
+        y: centroid.y,
+        improvementMetrics,
+    }
 }
 
 /**

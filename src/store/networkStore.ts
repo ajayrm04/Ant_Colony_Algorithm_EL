@@ -87,14 +87,23 @@ export const useNetworkStore = create<NetworkState & { adjacencyList: Record<num
   trafficWeight: 2.0,
   adjacencyList: {},
 
-  // Build adjacency list with node type info (router/device)
+  // Build adjacency list with node type info (router/device) and edge weights
   getAdjacencyListWithType: () => {
-    const { adjacencyList, nodes } = get()
+    const { adjacencyList, nodes, edges } = get()
     const nodeTypeMap = Object.fromEntries(nodes.map((n) => [n.id, n.type]))
-    const result: Record<number, { neighbors: number[]; type: NodeType }> = {}
+    // Build a map for quick edge weight lookup
+    const edgeWeightMap: Record<string, number> = {}
+    edges.forEach((edge) => {
+      edgeWeightMap[`${edge.source}-${edge.target}`] = edge.weight
+      edgeWeightMap[`${edge.target}-${edge.source}`] = edge.weight // undirected
+    })
+    const result: Record<number, { neighbors: { id: number; weight: number }[]; type: NodeType }> = {}
     Object.entries(adjacencyList).forEach(([id, neighbors]) => {
       result[Number(id)] = {
-        neighbors: neighbors as number[],
+        neighbors: (neighbors as number[]).map((neighborId) => ({
+          id: neighborId,
+          weight: edgeWeightMap[`${id}-${neighborId}`] ?? 1,
+        })),
         type: nodeTypeMap[Number(id)],
       }
     })
