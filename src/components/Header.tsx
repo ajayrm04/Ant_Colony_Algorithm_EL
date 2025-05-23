@@ -1,14 +1,14 @@
 import React from 'react';
-import { BarChart3, Link, Network } from 'lucide-react';
+import { BarChart3, Link, Network, GitCompare } from 'lucide-react';
 
 interface HeaderProps {
-  currentPage: 'simulation' | 'analysis';
-  onPageChange: (page: 'simulation' | 'analysis') => void;
+  currentPage: 'simulation' | 'analysis' | 'compare';
+  onPageChange: (page: 'simulation' | 'analysis' | 'compare') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
-  const handlePageChange = () => {
-    onPageChange(currentPage === 'simulation' ? 'analysis' : 'simulation');
+  const handlePageChange = (page: 'simulation' | 'analysis' | 'compare') => {
+    onPageChange(page);
   };
 
   return (
@@ -23,15 +23,37 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
 
       <div className="flex items-center space-x-4">
         <button
-          onClick={handlePageChange}
+          onClick={() => handlePageChange('simulation')}
+          className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm ${
+            currentPage === 'simulation'
+              ? 'bg-blue-500 hover:bg-blue-600'
+              : 'bg-gray-600 hover:bg-gray-700'
+          } text-white transition-colors`}
+        >
+          <Network className="w-4 h-4 mr-2" />
+          Simulation
+        </button>
+        <button
+          onClick={() => handlePageChange('analysis')}
           className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm ${
             currentPage === 'analysis'
-              ? 'bg-gray-600 hover:bg-gray-700'
-              : 'bg-blue-500 hover:bg-blue-600'
+              ? 'bg-blue-500 hover:bg-blue-600'
+              : 'bg-gray-600 hover:bg-gray-700'
           } text-white transition-colors`}
         >
           <BarChart3 className="w-4 h-4 mr-2" />
-          {currentPage === 'simulation' ? 'Analysis' : 'Simulation'}
+          Analysis
+        </button>
+        <button
+          onClick={() => handlePageChange('compare')}
+          className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm ${
+            currentPage === 'compare'
+              ? 'bg-blue-500 hover:bg-blue-600'
+              : 'bg-gray-600 hover:bg-gray-700'
+          } text-white transition-colors`}
+        >
+          <GitCompare className="w-4 h-4 mr-2" />
+          Compare Networks
         </button>
         <a 
           href="https://github.com/YOUR_REPO" 

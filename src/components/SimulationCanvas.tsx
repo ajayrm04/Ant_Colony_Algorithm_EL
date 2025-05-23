@@ -6,13 +6,23 @@ import { useNetworkStore } from "../store/networkStore"
 import { NodeType } from "../types/networkTypes"
 import { drawEdgeWithPheromone, drawAnt, drawNodeRipple, drawNode } from "../utils/animationUtils"
 
-const SimulationCanvas: React.FC = () => {
+interface SimulationCanvasProps {
+  adjacencyList?: Record<string, string[]>;
+  trafficPattern?: Record<string, number>;
+}
+
+const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
+  adjacencyList,
+  trafficPattern
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
 
   const [isDragging, setIsDragging] = useState(false)
   const [draggedNode, setDraggedNode] = useState<number | null>(null)
+  const [modifiedNodes, setModifiedNodes] = useState<any[]>([])
+  const [modifiedEdges, setModifiedEdges] = useState<any[]>([])
 
   const {
     startSimulation,
@@ -37,6 +47,94 @@ const SimulationCanvas: React.FC = () => {
     showCongestion,
   } = useNetworkStore()
 
+  // Update modified network when props change
+  useEffect(() => {
+    if (adjacencyList) {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      
+      // Calculate center and radius based on container size
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) * 0.35; // Use 35% of the smaller dimension
+
+      // Create nodes from adjacency list
+      const newNodes = Object.entries(adjacencyList).map(([id, nodeData]: [string, any], index) => {
+        // Calculate position in a circular layout
+        const angle = (index * 2 * Math.PI) / Object.keys(adjacencyList).length;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+
+        return {
+          id: parseInt(id),
+          x,
+          y,
+          label: `N${index + 1}`,
+          type: nodeData.type === 'router' ? NodeType.ROUTER : NodeType.DEVICE,
+          congestion: 0
+        };
+      });
+
+
+      // Transform adjacencyList to a simple Record<string, string[]> if needed
+      const transformedAdjacencyList = (() => {
+        if (!adjacencyList) return {};
+        const transformed: Record<string, string[]> = {};
+        Object.entries(adjacencyList).forEach(([nodeId, nodeData]: [string, any]) => {
+          // If nodeData has a 'neighbors' property, use it; otherwise, assume it's already an array
+          if (nodeData && Array.isArray(nodeData.neighbors)) {
+        transformed[nodeId] = nodeData.neighbors.map((n: any) => n.id?.toString?.() ?? n.toString());
+          } else if (Array.isArray(nodeData)) {
+        transformed[nodeId] = nodeData.map((n: any) => n.id?.toString?.() ?? n.toString());
+          }
+        });
+        return transformed;
+      })();
+
+
+      // Create edges from adjacency list (assuming adjacencyList: Record<string, string[]>)
+      const newEdges: any[] = [];
+      const addedEdges = new Set<string>();
+
+      Object.entries(adjacencyList).forEach(([sourceId, nodeData]: [string, any]) => {
+        if (!Array.isArray(nodeData.neighbors)) return;
+        nodeData.neighbors.forEach((neighbor: any) => {
+          const neighborId = neighbor.id?.toString?.() ?? neighbor.toString();
+          // Create a unique key to avoid duplicate edges (undirected)
+          const edgeKey = [sourceId, neighborId].sort().join("-");
+          if (!addedEdges.has(edgeKey)) {
+        const sourceNode = newNodes.find(n => n.id === parseInt(sourceId));
+        const targetNode = newNodes.find(n => n.id === parseInt(neighborId));
+        if (sourceNode && targetNode) {
+          // Use the weight from the neighbor object if present, else calculate
+          const weight = typeof neighbor.weight === "number"
+            ? neighbor.weight
+            : Math.floor(Math.hypot(sourceNode.x - targetNode.x, sourceNode.y - targetNode.y));
+          const edge = {
+            source: parseInt(sourceId),
+            target: parseInt(neighborId),
+            weight,
+            sourcetype: sourceNode.type,
+            targettype: targetNode.type,
+            traffic: trafficPattern?.[`${sourceId}-${neighborId}`] || 0,
+            bandwidth: 100,
+            utilization: 0
+          };
+          newEdges.push(edge);
+          addedEdges.add(edgeKey);
+        }
+          }
+        });
+      });
+
+      setModifiedNodes(newNodes);
+      setModifiedEdges(newEdges);
+    }
+  }, [adjacencyList, trafficPattern]);
+
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current
     const container = containerRef.current
@@ -58,6 +156,8 @@ const SimulationCanvas: React.FC = () => {
   }, [
     nodes,
     edges,
+    modifiedNodes,
+    modifiedEdges,
     pheromones,
     bestPath,
     selectedSourceNode,
@@ -98,6 +198,8 @@ const SimulationCanvas: React.FC = () => {
   }, [
     nodes,
     edges,
+    modifiedNodes,
+    modifiedEdges,
     pheromones,
     bestPath,
     selectedSourceNode,
@@ -118,10 +220,14 @@ const SimulationCanvas: React.FC = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    // Use modified or original network data based on props
+    const currentNodes = adjacencyList ? modifiedNodes : nodes;
+    const currentEdges = adjacencyList ? modifiedEdges : edges;
+
     // Draw edges
-    edges.forEach((edge) => {
-      const source = nodes.find((n) => n.id === edge.source)
-      const target = nodes.find((n) => n.id === edge.target)
+    currentEdges.forEach((edge) => {
+      const source = currentNodes.find((n) => n.id === edge.source)
+      const target = currentNodes.find((n) => n.id === edge.target)
       if (!source || !target) return
 
       const key = `${edge.source}-${edge.target}`
@@ -133,7 +239,7 @@ const SimulationCanvas: React.FC = () => {
     })
 
     // Draw nodes
-    nodes.forEach((node) => {
+    currentNodes.forEach((node) => {
       drawNode(ctx, node, node.id === selectedSourceNode, node.id === selectedTargetNode, showCongestion)
     })
 
@@ -143,7 +249,7 @@ const SimulationCanvas: React.FC = () => {
 
       // Add ripple effect when ant reaches target
       if (ant.progress > 0.9) {
-        const toNode = nodes.find((n) => n.id === ant.to)
+        const toNode = currentNodes.find((n) => n.id === ant.to)
         if (toNode) {
           drawNodeRipple(ctx, toNode.x, toNode.y, (ant.progress - 0.9) * 10)
         }

@@ -8,7 +8,7 @@ import { NodeType } from "../types/networkTypes"
 import type { HistoricalRoute, TrafficHotspot, RouterPlacementSuggestion } from "../types/analysisTypes"
 import { findTrafficHotspots, getRouteFrequencyData } from "../utils/analysisUtils"
 
-interface NetworkAnalysisCanvasProps {
+export interface NetworkAnalysisCanvasProps {
   nodes: Node[]
   edges: Edge[]
   historicalRoutes: HistoricalRoute[]

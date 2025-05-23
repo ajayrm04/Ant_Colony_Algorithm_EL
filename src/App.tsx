@@ -6,33 +6,37 @@ import { useNetworkStore } from './store/networkStore';
 import TrafficPanel from './components/trafficPanel';
 import { useState } from 'react';
 import NetworkAnalysisPage from './components/NetworkAnalysisPage';
+import CompareNetworks from './components/CompareNetworks';
 
 function App() {
   const { simulationRunning } = useNetworkStore();
-  const [currentPage, setCurrentPage] = useState<'simulation' | 'analysis'>('simulation');
+  const [currentPage, setCurrentPage] = useState<'simulation' | 'analysis' | 'compare'>('simulation');
 
   const renderContent = () => {
-    if (currentPage === 'analysis') {
-      return <NetworkAnalysisPage />;
-    }
-
-    return (
-      <main className="flex-1 flex flex-col md:flex-row">
-        <div className="flex-1 p-4 relative">
-          <SimulationCanvas />
-          {simulationRunning && (
-            <div className="absolute top-5 right-5 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-              Simulation Running
+    switch (currentPage) {
+      case 'analysis':
+        return <NetworkAnalysisPage />;
+      case 'compare':
+        return <CompareNetworks />;
+      default:
+        return (
+          <main className="flex-1 flex flex-col md:flex-row">
+            <div className="flex-1 p-4 relative">
+              <SimulationCanvas />
+              {simulationRunning && (
+                <div className="absolute top-5 right-5 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                  Simulation Running
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className="w-full md:w-80 lg:w-96 border-l border-gray-700 bg-gray-800 flex flex-col">
-          <ControlPanel />
-          <InfoPanel />
-          <TrafficPanel/>
-        </div>
-      </main>
-    );
+            <div className="w-full md:w-80 lg:w-96 border-l border-gray-700 bg-gray-800 flex flex-col">
+              <ControlPanel />
+              <InfoPanel />
+              <TrafficPanel/>
+            </div>
+          </main>
+        );
+    }
   };
 
   return (
