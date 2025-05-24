@@ -8,11 +8,11 @@ import { useState } from 'react';
 import NetworkAnalysisPage from './components/NetworkAnalysisPage';
 import CompareNetworks from './components/CompareNetworks';
 import ChatbotModal from "./components/ChatbotModal";
+import ChatbotPage from './components/ChatbotPage';
 
 function App() {
   const { simulationRunning } = useNetworkStore();
-  const [currentPage, setCurrentPage] = useState<'simulation' | 'analysis' | 'compare'>('simulation');
-  const [showChatbot, setShowChatbot] = useState(false);
+  const [currentPage, setCurrentPage] = useState<'simulation' | 'analysis' | 'compare' | 'chatbot'>('simulation');
 
   const renderContent = () => {
     switch (currentPage) {
@@ -20,6 +20,8 @@ function App() {
         return <NetworkAnalysisPage />;
       case 'compare':
         return <CompareNetworks />;
+      case 'chatbot':
+        return <ChatbotPage />;
       default:
         return (
           <main className="flex-1 flex flex-col md:flex-row">
@@ -45,27 +47,6 @@ function App() {
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       <Header onPageChange={setCurrentPage} currentPage={currentPage} />
       {renderContent()}
-      {/* Floating Chatbot Button */}
-      <button
-        onClick={() => setShowChatbot(true)}
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-          background: '#2563eb',
-          color: 'white',
-          borderRadius: '50%',
-          width: 56,
-          height: 56,
-          fontSize: 28,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-        }}
-        title="Open Chatbot"
-      >
-        💬
-      </button>
-      {showChatbot && <ChatbotModal onClose={() => setShowChatbot(false)} />}
     </div>
   );
 }

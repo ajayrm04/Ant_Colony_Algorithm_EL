@@ -5,11 +5,12 @@ import google.generativeai as genai
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
 
-genai.configure(api_key="AIzaSyBxdL-55wm6b_lWZyTJZhavAm1eg67VQmc")
+genai.configure(api_key="AIzaSyCswlWXhR_4vr6ByJKMKgfBtT2HAZfwSMc")
 model = genai.GenerativeModel('gemini-2.0-flash')
 
-@app.route('/predict', methods=['POST'])
+@app.route("/predict", methods=['POST'])
 def predict():
+    
     data = request.get_json()
     prompt = data.get('prompt', '')
     try:

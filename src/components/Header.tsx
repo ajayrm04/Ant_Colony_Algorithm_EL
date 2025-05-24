@@ -1,13 +1,13 @@
 import React from 'react';
-import { BarChart3, Link, Network, GitCompare } from 'lucide-react';
+import { BarChart3, Link, Network, GitCompare, MessageSquare } from 'lucide-react';
 
 interface HeaderProps {
-  currentPage: 'simulation' | 'analysis' | 'compare';
-  onPageChange: (page: 'simulation' | 'analysis' | 'compare') => void;
+  currentPage: 'simulation' | 'analysis' | 'compare' | 'chatbot';
+  onPageChange: (page: 'simulation' | 'analysis' | 'compare' | 'chatbot') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
-  const handlePageChange = (page: 'simulation' | 'analysis' | 'compare') => {
+  const handlePageChange = (page: 'simulation' | 'analysis' | 'compare' | 'chatbot') => {
     onPageChange(page);
   };
 
@@ -54,6 +54,17 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
         >
           <GitCompare className="w-4 h-4 mr-2" />
           Compare Networks
+        </button>
+        <button
+          onClick={() => handlePageChange('chatbot')}
+          className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm ${
+            currentPage === 'chatbot'
+              ? 'bg-blue-500 hover:bg-blue-600'
+              : 'bg-gray-600 hover:bg-gray-700'
+          } text-white transition-colors`}
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Chatbot
         </button>
         <a 
           href="https://github.com/YOUR_REPO" 

@@ -23,7 +23,7 @@ const ChatbotModal = ({ onClose }: { onClose: () => void }) => {
         setMessages(msgs => [...msgs, { from: "bot", text: data.response }]);
       }
     } catch (e) {
-      setMessages(msgs => [...msgs, { from: "bot", text: "Error connecting to server." }]);
+      setMessages(msgs => [...msgs, { from: "bot", text: "Error connecting to server at http://localhost:5000." }]);
     }
     setLoading(false);
   };
