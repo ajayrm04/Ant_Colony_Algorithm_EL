@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNetworkStore } from '../store/networkStore';
 import SimulationCanvas from './SimulationCanvas';
-// import {historicalRoutes} from '../components/NetworkAnalysisCanvas';
+
 
 // Dummy TrafficHeatmap component for illustration
 const TrafficHeatmap: React.FC<{ trafficPattern: Record<string, number> }> = ({ trafficPattern }) => (

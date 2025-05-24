@@ -11,7 +11,7 @@ import { findTrafficHotspots, getRouteFrequencyData } from "../utils/analysisUti
 export interface NetworkAnalysisCanvasProps {
   nodes: Node[]
   edges: Edge[]
-  historicalRoutes: HistoricalRoute[]
+historicalRoutes: HistoricalRoute[]
   filteredRoutes: HistoricalRoute[]
   suggestedRouter: RouterPlacementSuggestion | null
   showHotspots: boolean
