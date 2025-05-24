@@ -236,8 +236,8 @@ export function findTrafficHotspots(routes: HistoricalRoute[], nodes: Node[]): T
     radius: 10 + (cell.count / maxCount) * 30, // Scale radius based on intensity
   }))
 
-    console.log("hotspots\n\n")
-    console.log(hotspots)
+    // console.log("hotspots\n\n")
+    // console.log(hotspots)
   return hotspots
 }
 

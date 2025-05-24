@@ -10,6 +10,7 @@ export interface Node {
   label: string
   type: NodeType
   congestion?: number // 0-1 value representing congestion level
+  name: string // 'r1', 'r2', ... for routers; 'd1', 'd2', ... for devices
 }
 
 export interface Edge {

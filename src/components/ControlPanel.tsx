@@ -36,12 +36,13 @@ const ControlPanel: React.FC = () => {
     const newId = Date.now()
     const type = NodeType.DEVICE
     addNode({
-      id: Date.now(),
+      id: newId,
       x: x_n,
       y: y_n,
       label: `D${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`,
       type: type,
       congestion: 0,
+      name: `d${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`,
     })
 
     nodes.forEach((otherNode) => {
@@ -76,6 +77,7 @@ const ControlPanel: React.FC = () => {
       label: `R${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`,
       type: NodeType.ROUTER,
       congestion: 0,
+      name: `r${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`,
     }
     addNode(newRouter)
 

@@ -297,16 +297,22 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     } else {
       const newId = Date.now()
       const type = e.shiftKey ? NodeType.ROUTER : NodeType.DEVICE
+      const label =
+        type === NodeType.ROUTER
+          ? `R${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`
+          : `D${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`;
+      const name =
+        type === NodeType.ROUTER
+          ? `r${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`
+          : `d${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`;
       const newNode = {
         id: newId,
         x,
         y,
-        label:
-          type === NodeType.ROUTER
-            ? `R${nodes.filter((n) => n.type === NodeType.ROUTER).length + 1}`
-            : `D${nodes.filter((n) => n.type === NodeType.DEVICE).length + 1}`,
+        label,
         type,
         congestion: 0,
+        name,
       }
 
       addNode(newNode)
@@ -344,6 +350,11 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
+
+    console.log("NODES\n")
+    console.log(JSON.stringify(nodes, null, 2))
+
+
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
 
@@ -359,6 +370,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    
       if (!isDragging || draggedNode === null) return
   
       const rect = canvasRef.current?.getBoundingClientRect()
