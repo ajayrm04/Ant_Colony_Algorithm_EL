@@ -92,6 +92,7 @@ const NetworkAnalysisPage: React.FC = () => {
   };
 
   console.log(JSON.stringify(historicalRoutes, null, 2))
+  
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
       {/* Control Panel */}

@@ -1,10 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNetworkStore } from "../store/networkStore";
+import { generateSampleHistoricalData } from "./TrafficSpread";
 
 const ChatbotPanel = () => {
   const [messages, setMessages] = useState<{ from: "user" | "bot"; text: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const clientId = useRef(`client_${Math.random().toString(36).substr(2, 9)}`);
+  
+  const {
+    nodes,
+    edges
+  } = useNetworkStore();
+  
+  const historicalData=generateSampleHistoricalData(nodes,edges)
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -12,16 +22,21 @@ const ChatbotPanel = () => {
     setInput("");
     setLoading(true);
     try {
+    
       const res = await fetch("http://localhost:5000/predict", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: input }),
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Client-ID": clientId.current
+        },
+        body: JSON.stringify({ prompt: input, history_data:historicalData , name_matrix:nodes}),
       });
       const data = await res.json();
       if (data.error) {
         setMessages(msgs => [...msgs, { from: "bot", text: `Error: ${data.error}` }]);
       } else {
         setMessages(msgs => [...msgs, { from: "bot", text: data.response }]);
+        console.log("Nodes list:", nodes);
       }
     } catch (e) {
       setMessages(msgs => [...msgs, { from: "bot", text: "Error connecting to server." }]);

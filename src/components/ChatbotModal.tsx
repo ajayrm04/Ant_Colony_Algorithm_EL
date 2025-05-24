@@ -1,6 +1,13 @@
 import React, { useState } from "react";
+import { HistoricalRoute } from "../types/analysisTypes";
 
-const ChatbotModal = ({ onClose }: { onClose: () => void }) => {
+
+interface ChatbotModalProps {
+  onClose: () => void;
+  historicalRoutes: HistoricalRoute[];
+}
+
+const ChatbotModal = ({ onClose, historicalRoutes }: ChatbotModalProps) => {
   const [messages, setMessages] = useState<{ from: "user" | "bot"; text: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,7 +21,10 @@ const ChatbotModal = ({ onClose }: { onClose: () => void }) => {
       const res = await fetch("http://localhost:5000/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: input }),
+        body: JSON.stringify({ 
+          prompt: input,
+          historicalRoutes: historicalRoutes 
+        }),
       });
       const data = await res.json();
       if (data.error) {
