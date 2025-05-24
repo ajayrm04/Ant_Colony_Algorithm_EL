@@ -67,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
           Chatbot
         </button>
         <a 
-          href="https://github.com/YOUR_REPO" 
+          href="https://github.com/ajayrm04/Ant_Colony_Algorithm_EL" 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-gray-400 hover:text-white text-sm flex items-center"
