@@ -60,7 +60,7 @@ console.log(JSON.stringify(routes, null, 2))
 /**
  * Generate a random path between source and target nodes
  */
-function generateRandomPath(sourceId: number, targetId: number, nodes: Node[], edges: Edge[]): number[] {
+export function generateRandomPath(sourceId: number, targetId: number, nodes: Node[], edges: Edge[]): number[] {
     // Build adjacency list with edge weights (assume weight 1 for all edges)
     const adjacency: Record<number, { id: number; weight: number }[]> = {}
     edges.forEach((edge) => {
@@ -226,16 +226,15 @@ export function findTrafficHotspots(routes: HistoricalRoute[], nodes: Node[]): T
     }
   })
 
-  // Convert grid to hotspots
+  // Convert grid to hotspots (always show top 5)
   const maxCount = Object.values(grid).reduce((max, cell) => Math.max(max, cell.count), 0)
-  const hotspots: TrafficHotspot[] = Object.values(grid)
-    .filter((cell) => cell.count > maxCount * 0.2) // Filter out low-traffic cells
-    .map((cell) => ({
-      x: cell.x,
-      y: cell.y,
-      intensity: cell.count / maxCount,
-      radius: 10 + (cell.count / maxCount) * 30, // Scale radius based on intensity
-    }))
+  const sortedCells = Object.values(grid).sort((a, b) => b.count - a.count)
+  const hotspots: TrafficHotspot[] = sortedCells.slice(0, 5).map((cell) => ({
+    x: cell.x,
+    y: cell.y,
+    intensity: cell.count / maxCount,
+    radius: 10 + (cell.count / maxCount) * 30, // Scale radius based on intensity
+  }))
 
     console.log("hotspots\n\n")
     console.log(hotspots)
@@ -397,4 +396,92 @@ export function getRouteFrequencyData(routes: HistoricalRoute[]): Record<string,
   })
 
   return edgeFrequency
+}
+
+/**
+ * Get router IDs sorted by traffic intensity in descending order
+ * @param nodes Array of network nodes
+ * @param edges Array of network edges
+ * @param trafficPattern Record of edge traffic values
+ * @returns Array of router IDs sorted by traffic intensity
+ */
+export function getSortedRouterIdsByTraffic(
+  nodes: Node[],
+  edges: Edge[],
+  trafficPattern: Record<string, number>
+): number[] {
+  // Create a map to store traffic intensity for each router
+  const routerTraffic: Record<number, number> = {};
+
+  // Initialize traffic for all routers to 0
+  nodes.forEach(node => {
+    if (node.type === NodeType.ROUTER) {
+      routerTraffic[node.id] = 0;
+    }
+  });
+
+  // Calculate traffic intensity for each router
+  edges.forEach(edge => {
+    const key = `${edge.source}-${edge.target}`;
+    const reverseKey = `${edge.target}-${edge.source}`;
+    const traffic = trafficPattern[key] || trafficPattern[reverseKey] || edge.traffic || 0;
+
+    // Add traffic to both source and target routers
+    if (nodes.find(n => n.id === edge.source)?.type === NodeType.ROUTER) {
+      routerTraffic[edge.source] = (routerTraffic[edge.source] || 0) + traffic;
+    }
+    if (nodes.find(n => n.id === edge.target)?.type === NodeType.ROUTER) {
+      routerTraffic[edge.target] = (routerTraffic[edge.target] || 0) + traffic;
+    }
+  });
+
+  // Convert to array and sort by traffic intensity
+  return Object.entries(routerTraffic)
+    .sort(([, a], [, b]) => b - a) // Sort in descending order
+    .map(([id]) => Number(id));
+}
+
+/**
+ * Spread traffic more evenly among all routers in the network
+ * @param nodes Array of network nodes
+ * @param edges Array of network edges
+ * @param trafficPattern Record of edge traffic values
+ * @returns New traffic pattern with traffic spread among routers
+ */
+export function spreadTrafficAmongRouters(
+  nodes: Node[],
+  edges: Edge[],
+  trafficPattern: Record<string, number>
+): Record<string, number> {
+  const routers = nodes.filter(n => n.type === NodeType.ROUTER);
+  if (routers.length === 0) return { ...trafficPattern };
+
+  // Calculate total traffic
+  let totalTraffic = 0;
+  Object.values(trafficPattern).forEach(v => totalTraffic += v);
+
+  // Find all router-router edges
+  const routerEdgeKeys = edges
+    .filter(e =>
+      nodes.find(n => n.id === e.source)?.type === NodeType.ROUTER &&
+      nodes.find(n => n.id === e.target)?.type === NodeType.ROUTER
+    )
+    .map(e => `${e.source}-${e.target}`);
+
+  if (routerEdgeKeys.length === 0) return { ...trafficPattern };
+
+  const perEdgeTraffic = Math.floor(totalTraffic / routerEdgeKeys.length);
+
+  const newPattern: Record<string, number> = { ...trafficPattern };
+  routerEdgeKeys.forEach(key => {
+    newPattern[key] = perEdgeTraffic;
+  });
+
+  // Optionally, set non-router edges to a lower value or zero
+  edges.forEach(e => {
+    const key = `${e.source}-${e.target}`;
+    if (!routerEdgeKeys.includes(key)) newPattern[key] = 0;
+  });
+
+  return newPattern;
 }

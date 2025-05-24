@@ -5,15 +5,20 @@ import { useRef, useEffect, useState, useCallback } from "react"
 import { useNetworkStore } from "../store/networkStore"
 import { NodeType } from "../types/networkTypes"
 import { drawEdgeWithPheromone, drawAnt, drawNodeRipple, drawNode } from "../utils/animationUtils"
+import { spreadTrafficAmongRouters } from "../utils/analysisUtils"
+import TrafficSpread from "./TrafficSpread"
+
 
 interface SimulationCanvasProps {
   adjacencyList?: Record<string, string[]>;
   trafficPattern?: Record<string, number>;
+  historicalRoutes?: any[];
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   adjacencyList,
-  trafficPattern
+  trafficPattern,
+  historicalRoutes
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -23,6 +28,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   const [draggedNode, setDraggedNode] = useState<number | null>(null)
   const [modifiedNodes, setModifiedNodes] = useState<any[]>([])
   const [modifiedEdges, setModifiedEdges] = useState<any[]>([])
+  const [spreadTrafficPattern, setSpreadTrafficPattern] = useState<Record<string, number> | null>(null)
+  const [showSpreadTraffic, setShowSpreadTraffic] = useState(false)
 
   const {
     startSimulation,
@@ -455,11 +462,29 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     setDraggedNode(null);
   };
 
+  const handleSpreadTraffic = () => {
+    // Use either modified or original network data
+    const currentNodes = adjacencyList ? modifiedNodes : nodes;
+    const currentEdges = adjacencyList ? modifiedEdges : edges;
+    const currentTrafficPattern = adjacencyList && trafficPattern ? trafficPattern : Object.fromEntries(currentEdges.map(e => [`${e.source}-${e.target}`, e.traffic]));
+    const newPattern = spreadTrafficAmongRouters(currentNodes, currentEdges, currentTrafficPattern);
+    setSpreadTrafficPattern(newPattern);
+    setShowSpreadTraffic(true);
+  }
+
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full border border-gray-700 bg-gray-950 rounded-lg overflow-hidden"
     >
+      {/* Spread Traffic Button */}
+      <button
+        onClick={handleSpreadTraffic}
+        className="absolute top-2 right-2 z-10 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded shadow"
+        style={{ zIndex: 10 }}
+      >
+        Spread Traffic
+      </button>
       {/* Grid lines overlay */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
@@ -508,6 +533,15 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       <p>Double-click: Add device | Shift + Double-click: Add router</p>
       <p>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</p>
       </div>
+      {/* Show TrafficSpread visualization if triggered */}
+      {showSpreadTraffic && spreadTrafficPattern && (
+        <TrafficSpread
+          nodes={adjacencyList ? modifiedNodes : nodes}
+          edges={adjacencyList ? modifiedEdges : edges}
+          trafficPattern={spreadTrafficPattern}
+          onClose={() => setShowSpreadTraffic(false)}
+        />
+      )}
     </div>
   )
 }
