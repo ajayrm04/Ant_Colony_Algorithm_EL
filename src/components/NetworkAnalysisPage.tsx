@@ -94,9 +94,9 @@ const NetworkAnalysisPage: React.FC = () => {
   console.log(JSON.stringify(historicalRoutes, null, 2))
   
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Control Panel */}
-      <div className="p-4 border-b border-gray-700">
+    <div className="h-screen flex flex-col overflow-y bg-gray-900 text-white">
+      {/* Control Panel - Fixed height */}
+      <div className="shrink-0 p-4 border-b border-gray-700">
         <div className="flex flex-wrap gap-3 mb-4">
           {/* Visualization Options */}
           <div className="flex items-center space-x-4">
@@ -210,68 +210,68 @@ const NetworkAnalysisPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex">
-        {/* Network Visualization */}
-        <div className="flex-1 p-4">
-          <div className="h-full flex flex-col">
-            <h2 className="text-lg font-semibold mb-2 flex items-center">
+      {/* Main Content Area - Scrollable */}
+      <div className="flex-1 flex h-screen">
+        {/* Network Visualization - Left side */}
+        <div className="flex-1 overflow-y p-4">
+          <div className="h-screen flex flex-col">
+            <h2 className="text-lg font-semibold mb-2 flex items-center shrink-0">
               <BarChart3 className="w-5 h-5 mr-2 text-blue-400" />
               Network Topology & Traffic Analysis
             </h2>
 
-            <div className="flex-1">
+            <div className="flex-1 relative h-screen transition-all duration-300">
               <NetworkAnalysisCanvas
-                nodes={nodes}
-                edges={edges}
-                historicalRoutes={historicalRoutes}
-                filteredRoutes={filteredRoutes}
-                suggestedRouter={suggestedRouter}
-                showHotspots={showHotspots}
-                showHistoricalRoutes={showHistoricalRoutes}
-                selectedRouteIds={selectedRouteIds}
-                onSelectRoute={handleSelectRoute}
+              nodes={nodes}
+              edges={edges}
+              historicalRoutes={historicalRoutes}
+              filteredRoutes={filteredRoutes}
+              suggestedRouter={suggestedRouter}
+              showHotspots={showHotspots}
+              showHistoricalRoutes={showHistoricalRoutes}
+              selectedRouteIds={selectedRouteIds}
+              onSelectRoute={handleSelectRoute}
               />
             </div>
           </div>
         </div>
 
-        {/* Right Panel */}
-        <div className="w-96 border-l border-gray-700 bg-gray-800 flex flex-col">
-          {/* Suggested Router */}
-          <div className="p-4 border-b border-gray-700">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <Router className="w-5 h-5 mr-2 text-green-400" />
+        {/* Right Panel - Fixed width, scrollable content */}
+        <div className="w-[400px] xl:w-[450px] flex flex-col min-h-0 border-l border-gray-700 bg-gray-800">
+          {/* Suggested Router Section */}
+          <div className="shrink-0 p-3 border-b border-gray-700">
+            <h2 className="text-base font-medium mb-2 flex items-center">
+              <Router className="w-4 h-4 mr-2 text-green-400" />
               Suggested Router Placement
             </h2>
 
             {suggestedRouter ? (
-              <div className="space-y-4">
-                <div className="bg-gray-800 p-3 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-300 mb-2">Improvement Metrics</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="bg-gray-700 p-2 rounded">
-                      <span className="block text-xs text-gray-400">Latency Reduction</span>
+              <div className="space-y-2">
+                <div className="bg-gray-900/50 p-2 rounded border border-gray-700">
+                  <h3 className="text-xs font-medium text-gray-200 mb-2">Improvement Metrics</h3>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+                      <span className="block text-[11px] text-gray-300">Latency</span>
                       <span className="text-green-400 font-medium">
                         {suggestedRouter.improvementMetrics.latencyReduction.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="bg-gray-700 p-2 rounded">
-                      <span className="block text-xs text-gray-400">Hop Reduction</span>
+                    <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+                      <span className="block text-[11px] text-gray-300">Hops</span>
                       <span className="text-green-400 font-medium">
-                        {suggestedRouter.improvementMetrics.hopReduction.toFixed(1)} hops
+                        {suggestedRouter.improvementMetrics.hopReduction.toFixed(1)}
                       </span>
                     </div>
-                    <div className="bg-gray-700 p-2 rounded">
-                      <span className="block text-xs text-gray-400">Congestion Reduction</span>
+                    <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+                      <span className="block text-[11px] text-gray-300">Congestion</span>
                       <span className="text-green-400 font-medium">
                         {suggestedRouter.improvementMetrics.congestionReduction.toFixed(1)}%
                       </span>
                     </div>
-                    <div className="bg-gray-700 p-2 rounded">
-                      <span className="block text-xs text-gray-400">Affected Routes</span>
+                    <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+                      <span className="block text-[11px] text-gray-300">Routes</span>
                       <span className="text-green-400 font-medium">
-                        {suggestedRouter.improvementMetrics.affectedRoutes} routes
+                        {suggestedRouter.improvementMetrics.affectedRoutes}
                       </span>
                     </div>
                   </div>
@@ -280,24 +280,27 @@ const NetworkAnalysisPage: React.FC = () => {
                 {performanceMetrics && <PerformanceMetricsCard metrics={performanceMetrics} />}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400">
-                <Router className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Not enough data to suggest router placement.</p>
-                <p className="text-sm mt-2">Add more nodes or routes to the network.</p>
+              <div className="text-center py-2 bg-gray-900/50 rounded border border-gray-700">
+                <Router className="w-8 h-8 mx-auto mb-1 opacity-30 text-gray-400" />
+                <p className="text-gray-300 text-xs">No router suggestion available</p>
+                <p className="text-[11px] text-gray-400">Add more network data</p>
               </div>
             )}
           </div>
 
-          {/* Route Analysis */}
-          <div className="flex-1 p-4 overflow-auto">
-            <h2 className="text-lg font-semibold mb-4">Historical Routes</h2>
-
-            <RouteAnalysisTable
-              routes={filteredRoutes}
-              nodes={nodes}
-              selectedRouteIds={selectedRouteIds}
-              onSelectRoute={handleSelectRoute}
-            />
+          {/* Route Analysis Section - Scrollable */}
+          <div className="flex-1 overflow-y min-h-0">
+            <div className="p-3">
+              <h2 className="text-base font-medium mb-3">Historical Routes</h2>
+              <div className="overflow-x-auto">
+                <RouteAnalysisTable
+                  routes={filteredRoutes}
+                  nodes={nodes}
+                  selectedRouteIds={selectedRouteIds}
+                  onSelectRoute={handleSelectRoute}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

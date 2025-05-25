@@ -43,16 +43,16 @@ chat_sessions = {}
 def predict():
     
     data = request.get_json()
-    print("Received data:", data)
+   
 
     prompt = data.get('prompt', '')
-    print("Prompt:", prompt)
+  
 
     historical_routes = data.get('history_data', [])
-    print("Historical routes:", historical_routes)
+
 
     name_matrix = data.get('name_matrix', [])
-    print("Name Matrix:", name_matrix)
+
 
     system_instruction_prompt = f"""
 this is the json format of historical routes of a network 

@@ -1,51 +1,93 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import google.generativeai as genai
-import os
 
-genai.configure(api_key=("AIzaSyBxdL-55wm6b_lWZyTJZhavAm1eg67VQmc"))
+app = Flask(__name__)
 
-system_instruction_prompt = """
-this is the json format of historical routes of a network 
-time stamp is the id 
-sourceId is the starting point 
-targetid is the ending point 
-path  object is the nodes involved in the  path the 2 nd elemnt in path is the router through which it travels latency is the opposostion to the flow of traffic
-hops is no of jumps between nodes
-congestion is a quantity to mesure traffic 
+# Configure CORS properly
+CORS(app, 
+     resources={
+         r"/*": {
+             "origins": ["http://localhost:5173"],
+             "methods": ["GET", "POST", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization", "X-Client-ID"],
+             "supports_credentials": True
+         }
+     })
 
-HISTROICAL ROUTES 
+# Configure API key once
+genai.configure(api_key="AIzaSyCswlWXhR_4vr6ByJKMKgfBtT2HAZfwSMc")
 
-]the following is the name of the nodes either it may be type device or type router 
-to identify when user adresses it 
-NAME MATRIX
-] These all objects in json format are formed using ant colony optimisation algorithms user may asks its benifits over other algorithms and ACO,s realtedness to this network , user asks some series of questions regarding the working of router , explain him in a begineer friendly way  whata happening in the network he might ask ,he  might ask the latency change in the network ofter aco implemtation etc 
-Answer the user in 4 lines with all the information needed 
-"""
-
-model = genai.GenerativeModel(
-    'gemini-2.5-flash-preview-04-17', 
-    system_instruction=system_instruction_prompt
-)
-
-
-chat = model.start_chat(history=[])
-
-print("Chat with Gemini (fine-tuned output)! Type 'quit' to end the conversation.")
-print("I am designed to be concise and factual.")
-
-while True:
-    user_input = input("You: ")
-    if user_input.lower() == 'quit':
-        break
+@app.route("/analyze_network", methods=['POST', 'OPTIONS'])
+def analyze_network():
+    # Handle preflight requests
+    if request.method == 'OPTIONS':
+        return '', 204
 
     try:
-        response = chat.send_message(user_input)
-        print("Gemini:", response.text)
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        historical_routes = data.get('history_data', [])
+        name_matrix = data.get('name_matrix', [])
+
+        # Log received data for debugging
+        print("Analyzing network data:", {
+            'historical_routes': historical_routes,
+            'name_matrix': name_matrix
+        })
+
+        system_instruction = f"""
+Analyze this network data and return ONLY these metrics in this EXACT format:
+Historical Routes: {historical_routes}
+Name Matrix: {name_matrix}
+
+Return ONLY these values in this EXACT format (one value per line):
+total_routers: [number]
+total_devices: [number]
+average_latency: [number]
+network_efficiency: [number]
+average_congestion: [number]
+number_of_hops: [number]
+topology_used: [text]
+packet_drop_rate: [number]
+aco_score: [number]"""
+
+        # Initialize model and get response directly
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
+        response = model.generate_content(system_instruction)
+        
+        # Parse the response into structured data
+        metrics = {}
+        if response.text:
+            lines = response.text.strip().split('\n')
+            for line in lines:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    metrics[key.strip()] = value.strip()
+
+        return jsonify({
+            'metrics': metrics,
+            'status': 'success'
+        })
 
     except Exception as e:
-        print(f"An error occurred: {e}")
-        
+        print(f"Error analyzing network: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
 
-print("\nConversation ended.")
-print("\nFull chat history (note how system instruction is not part of history):")
-for message in chat.history:
-    print(f"{message.role}: {message.parts[0].text}")
+if __name__ == '__main__':
+    # Enable debug mode and allow all origins in development
+    app.run(debug=True, port=5000, host='0.0.0.0')
+
+
+
+
+
+
+
+
+

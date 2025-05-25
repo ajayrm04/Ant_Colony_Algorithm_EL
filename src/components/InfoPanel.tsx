@@ -144,38 +144,7 @@ const InfoPanel: React.FC = () => {
           </motion.div>
         )}
         
-        <motion.div variants={itemVariants} className="card p-4">
-          <div className="flex items-center space-x-2 mb-3">
-            <Info className="w-4 h-4 text-primary-400" />
-            <h3 className="text-sm font-medium text-gray-300">Instructions</h3>
-          </div>
-          <div className="text-xs text-gray-300 space-y-2">
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Double-click on the canvas to add a device</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Shift + Double-click to add a router</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Click on a node to set it as source</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Ctrl/Cmd + Click to set as target</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Drag nodes to reposition them</span>
-            </p>
-            <p className="flex items-center space-x-2">
-              <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-              <span>Use the Control Panel to manage simulation</span>
-            </p>
-          </div>
-        </motion.div>
+  
       </div>
     </motion.div>
   );

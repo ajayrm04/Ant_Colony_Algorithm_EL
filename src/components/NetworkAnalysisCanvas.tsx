@@ -400,7 +400,7 @@ const NetworkAnalysisCanvas: React.FC<NetworkAnalysisCanvasProps> = ({
       className="relative w-full h-full border border-gray-700 bg-gray-950 rounded-lg overflow-hidden"
     >
       <canvas ref={canvasRef} onClick={handleCanvasClick} className="w-full h-full cursor-crosshair" />
-      <div className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-80 text-xs p-2 rounded text-gray-300 pointer-events-none">
+      <div className="absolute bottom-2 left-2 bg-opacity-80 text-xs p-2 rounded text-gray-300 pointer-events-none">
         <p>Click on a route to select it | Toggle visualization options in the control panel</p>
       </div>
     </div>

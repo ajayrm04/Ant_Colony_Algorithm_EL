@@ -266,21 +266,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         }
       }
     })
-
-    // Draw simulation status
-    if (simulationRunning || simulationPhase === "complete") {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
-      ctx.fillRect(10, 10, 180, 50)
-
-      ctx.fillStyle = "white"
-      ctx.font = "14px Arial"
-      ctx.textAlign = "left"
-      ctx.fillText(`Iteration: ${iterations}/100`, 20, 30)
-
-      ctx.fillStyle =
-        simulationPhase === "exploration" ? "#FFD700" : simulationPhase === "convergence" ? "#00FFFF" : "#00FF00"
-      ctx.fillText(`Phase: ${simulationPhase}`, 20, 50)
-    }
   }
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -497,17 +482,69 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       transition={{ duration: 0.5 }}
       className="relative w-full h-full card overflow-hidden"
     >
-      {/* Spread Traffic Button */}
+      {/* Spread Traffic Button - Top middle */}
       <motion.button
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         onClick={handleSpreadTraffic}
-        className="absolute top-4 right-4 z-10 btn-primary flex items-center space-x-2 shadow-lg"
+        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 btn-primary flex items-center space-x-2 shadow-lg"
       >
         <BarChart2 className="w-4 h-4" />
         <span>Spread Traffic</span>
       </motion.button>
+
+      {/* Simulation Status - Top left, without instructions */}
+      {simulationRunning && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute top-4 left-4 card p-3 bg-gray-800/90 backdrop-blur-sm border border-gray-700 shadow-xl"
+          style={{ zIndex: 3 }}
+        >
+          <div className="flex items-center space-x-3">
+            <Activity className={`w-5 h-5 ${
+              simulationPhase === "exploration" 
+                ? "text-yellow-400" 
+                : simulationPhase === "convergence" 
+                ? "text-cyan-400" 
+                : "text-green-400"
+            }`} />
+            <div>
+              <div className="text-sm font-medium text-gray-200">Iteration: {iterations}/100</div>
+              <div className={`text-sm font-medium ${
+                simulationPhase === "exploration" 
+                  ? "text-yellow-400" 
+                  : simulationPhase === "convergence" 
+                  ? "text-cyan-400" 
+                  : "text-green-400"
+              }`}>
+                Status: {simulationPhase}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Instructions - Bottom right */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="absolute bottom-4 right-4 card p-3 text-xs text-gray-300 bg-gray-800/90 backdrop-blur-sm border border-gray-700 shadow-xl"
+        style={{ zIndex: 3 }}
+      >
+        <div className="space-y-1">
+          <p className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
+            <span>Double-click: Add device | Shift + Double-click: Add router</span>
+          </p>
+          <p className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
+            <span>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</span>
+          </p>
+        </div>
+      </motion.div>
 
       {/* Grid lines overlay */}
       <svg
@@ -552,57 +589,6 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         className="w-full h-full cursor-crosshair"
         style={{ position: "relative", zIndex: 2 }}
       />
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="absolute bottom-4 left-4 card p-3 text-xs text-gray-300 pointer-events-none select-none"
-        style={{ zIndex: 3 }}
-      >
-        <div className="space-y-1">
-          <p className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-            <span>Double-click: Add device | Shift + Double-click: Add router</span>
-          </p>
-          <p className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
-            <span>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</span>
-          </p>
-        </div>
-      </motion.div>
-
-      {/* Simulation Status */}
-      {(simulationRunning || simulationPhase === "complete") && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-4 left-4 card p-3 flex items-center space-x-3"
-          style={{ zIndex: 3 }}
-        >
-          <div className="flex items-center space-x-2">
-            <Activity className={`w-4 h-4 ${
-              simulationPhase === "exploration" 
-                ? "text-yellow-400" 
-                : simulationPhase === "convergence" 
-                ? "text-cyan-400" 
-                : "text-green-400"
-            }`} />
-            <div className="text-sm">
-              <div className="text-gray-300">Iteration: {iterations}/100</div>
-              <div className={`text-xs font-medium ${
-                simulationPhase === "exploration" 
-                  ? "text-yellow-400" 
-                  : simulationPhase === "convergence" 
-                  ? "text-cyan-400" 
-                  : "text-green-400"
-              }`}>
-                Phase: {simulationPhase}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Show TrafficSpread visualization if triggered */}
       {showSpreadTraffic && spreadTrafficPattern && (
