@@ -16,13 +16,15 @@ interface SimulationCanvasProps {
   trafficPattern?: Record<string, number>;
   historicalRoutes?: any[];
   onSpreadTraffic?: (pattern: Record<string, number>) => void;
+  isAntColony?: boolean;
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   adjacencyList,
   trafficPattern,
   historicalRoutes,
-  onSpreadTraffic
+  onSpreadTraffic,
+  isAntColony = true
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -266,6 +268,22 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         }
       }
     })
+
+    // Draw traffic patterns
+    Object.entries(trafficPattern || {}).forEach(([key, value]) => {
+      const [sourceId, targetId] = key.split('-').map(Number);
+      const sourceNode = currentNodes.find(n => n.id === sourceId);
+      const targetNode = currentNodes.find(n => n.id === targetId);
+
+      if (sourceNode && targetNode) {
+        ctx.beginPath();
+        ctx.moveTo(sourceNode.x, sourceNode.y);
+        ctx.lineTo(targetNode.x, targetNode.y);
+        ctx.strokeStyle = `rgba(${isAntColony ? '34, 197, 94' : '59, 130, 246'}, ${Math.min(value / 10, 0.8)})`;
+        ctx.lineWidth = Math.min(value, 5);
+        ctx.stroke();
+      }
+    });
   }
 
   const handleDoubleClick = (e: React.MouseEvent) => {

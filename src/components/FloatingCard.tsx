@@ -41,7 +41,7 @@ const FloatingCard: React.FC<FloatingCardProps> = ({ data, isLoading = false, sh
                   <MetricRow label="Routers" value={data.totalRouters} />
                   <MetricRow label="Devices" value={data.totalDevices} />
                   <MetricRow label="Latency" value={`${data.averageLatency.toFixed(2)}ms`} />
-                  <MetricRow label="Efficiency" value={`${(data.networkEfficiency * 100).toFixed(1)}%`} />
+                  
                   <MetricRow label="Hops" value={data.numberOfHops} />
                   <MetricRow label="Topology" value={data.topologyUsed} />
                   <MetricRow 

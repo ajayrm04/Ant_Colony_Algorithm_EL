@@ -1,155 +1,216 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNetworkStore } from '../store/networkStore';
 import SimulationCanvas from './SimulationCanvas';
+import { calculateDijkstraPath } from '../utils/dijkstra';
+import { Play, Loader2 } from 'lucide-react';
 
+interface MetricsData {
+  averagePathLength: number;
+  congestionLevel: number;
+  pathsOptimized: number;
+  executionTime: number;
+}
 
-// Dummy TrafficHeatmap component for illustration
-const TrafficHeatmap: React.FC<{ trafficPattern: Record<string, number> }> = ({ trafficPattern }) => (
-  <div className="mt-2">
-    <h4 className="font-semibold mb-1">Traffic Heatmap</h4>
-    <div className="text-xs bg-gray-700 p-2 rounded max-h-32 overflow-auto">
-      {Object.entries(trafficPattern).length === 0
-        ? <span className="text-gray-400">No traffic data</span>
-        : Object.entries(trafficPattern).map(([key, value]) => (
-            <div key={key}>{key}: <span className="text-yellow-400">{value}</span></div>
-          ))
-      }
+const MetricsCard: React.FC<{ title: string; metrics: MetricsData }> = ({ title, metrics }) => (
+  <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+    <h3 className="text-sm font-medium text-gray-200 mb-2">{title}</h3>
+    <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+        <span className="block text-[11px] text-gray-300">Avg Path Length</span>
+        <span className="text-blue-400 font-medium">{metrics.averagePathLength.toFixed(2)}</span>
+      </div>
+      <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+        <span className="block text-[11px] text-gray-300">Congestion</span>
+        <span className="text-red-400 font-medium">{metrics.congestionLevel.toFixed(2)}</span>
+      </div>
+      <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+        <span className="block text-[11px] text-gray-300">Paths Optimized</span>
+        <span className="text-green-400 font-medium">{metrics.pathsOptimized}</span>
+      </div>
+      <div className="bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+        <span className="block text-[11px] text-gray-300">Execution Time</span>
+        <span className="text-yellow-400 font-medium">{metrics.executionTime.toFixed(2)}ms</span>
+      </div>
     </div>
   </div>
 );
 
-const CongestionDisplay: React.FC<{ trafficPattern: Record<string, number> }> = ({ trafficPattern }) => {
-  // Dummy congestion calculation: max traffic value
-  const congestion = Object.values(trafficPattern).length
-    ? Math.max(...Object.values(trafficPattern))
-    : 0;
+const ComparisonMetrics: React.FC<{ antColonyMetrics: MetricsData; dijkstraMetrics: MetricsData }> = ({ antColonyMetrics, dijkstraMetrics }) => {
+  const differences = {
+    pathLength: ((dijkstraMetrics.averagePathLength - antColonyMetrics.averagePathLength) / dijkstraMetrics.averagePathLength * 100).toFixed(2),
+    congestion: ((dijkstraMetrics.congestionLevel - antColonyMetrics.congestionLevel) / dijkstraMetrics.congestionLevel * 100).toFixed(2),
+    execution: ((dijkstraMetrics.executionTime - antColonyMetrics.executionTime) / dijkstraMetrics.executionTime * 100).toFixed(2)
+  };
+
   return (
-    <div className="mt-2 text-sm">
-      <span className="font-semibold">Congestion: </span>
-      <span className="text-red-400">{congestion}</span>
+    <div className="bg-gray-800 rounded-lg p-4 mt-4">
+      <h2 className="text-base font-medium mb-3">Algorithm Comparison</h2>
+      <div className="grid grid-cols-3 gap-4 text-xs">
+        <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+          <h3 className="text-[11px] text-gray-300 mb-1">Path Length Difference</h3>
+          <div className={`text-lg font-medium ${Number(differences.pathLength) <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {differences.pathLength}%
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {Number(differences.pathLength) <= 0 ? 'Shorter paths with Ant Colony' : 'Longer paths with Ant Colony'}
+          </p>
+        </div>
+        
+        <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+          <h3 className="text-[11px] text-gray-300 mb-1">Congestion Difference</h3>
+          <div className={`text-lg font-medium ${Number(differences.congestion) <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {differences.congestion}%
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {Number(differences.congestion) <= 0 ? 'Less congestion with Ant Colony' : 'More congestion with Ant Colony'}
+          </p>
+        </div>
+
+        <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+          <h3 className="text-[11px] text-gray-300 mb-1">Execution Time Difference</h3>
+          <div className={`text-lg font-medium ${Number(differences.execution) <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {differences.execution}%
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {Number(differences.execution) <= 0 ? 'Faster with Ant Colony' : 'Slower with Ant Colony'}
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
 
-interface NetworkConfig {
-  adjacencyList: Record<string, any>;
-  trafficPattern: any[];
-}
-
 const CompareNetworks: React.FC = () => {
-  const networkStore = useNetworkStore();
-  const [modifiedNetwork, setModifiedNetwork] = useState<NetworkConfig>({
-    adjacencyList: {},
-    trafficPattern: []
+  const { nodes, edges, trafficPatterns, startSimulation } = useNetworkStore();
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [antColonyMetrics, setAntColonyMetrics] = useState<MetricsData>({
+    averagePathLength: 0,
+    congestionLevel: 0,
+    pathsOptimized: 0,
+    executionTime: 0
+  });
+  const [dijkstraMetrics, setDijkstraMetrics] = useState<MetricsData>({
+    averagePathLength: 0,
+    congestionLevel: 0,
+    pathsOptimized: 0,
+    executionTime: 0
   });
 
-  // Transform the adjacency list format to match what SimulationCanvas expects
-  const transformedAdjacencyList = useMemo(() => {
-    if (!modifiedNetwork.adjacencyList) return {};
-    const transformed: Record<string, string[]> = {};
-    Object.entries(modifiedNetwork.adjacencyList).forEach(([nodeId, nodeData]: [string, any]) => {
-      if (nodeData.neighbors) {
-        transformed[nodeId] = nodeData.neighbors.map((n: any) => n.id.toString());
-      }
-    });
-    return transformed;
-  }, [modifiedNetwork.adjacencyList]);
-
-  // Transform traffic pattern to match expected format
+  // Transform traffic patterns for visualization
   const transformedTrafficPattern = useMemo(() => {
-    if (!modifiedNetwork.trafficPattern) return {};
     const pattern: Record<string, number> = {};
-    modifiedNetwork.trafficPattern.forEach((flow: any) => {
+    trafficPatterns.forEach((flow: any) => {
       const key = `${flow.source}-${flow.target}`;
       pattern[key] = flow.volume;
     });
     return pattern;
-  }, [modifiedNetwork.trafficPattern]);
+  }, [trafficPatterns]);
 
-  // Transform original traffic pattern from store
-  const originalTrafficPattern = useMemo(() => {
-    if (!networkStore.trafficPatterns) return {};
-    const pattern: Record<string, number> = {};
-    networkStore.trafficPatterns.forEach((flow: any) => {
-      const key = `${flow.source}-${flow.target}`;
-      pattern[key] = flow.volume;
-    });
-    return pattern;
-  }, [networkStore.trafficPatterns]);
-
-  // Function to handle adjacency list input
-  const handleAdjacencyListChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    try {
-      const newAdjacencyList = JSON.parse(e.target.value);
-      setModifiedNetwork(prev => ({
-        ...prev,
-        adjacencyList: newAdjacencyList
-      }));
-    } catch (error) {
-      console.error('Invalid JSON format for adjacency list');
+  const runSimulation = async () => {
+    if (!nodes.length || !edges.length) {
+      alert('Please create a network first');
+      return;
     }
-  };
 
-  // Function to handle traffic pattern input
-  const handleTrafficPatternChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setIsSimulating(true);
+
     try {
-      const newTrafficPattern = JSON.parse(e.target.value);
-      setModifiedNetwork(prev => ({
+      // Run Dijkstra's algorithm
+      const dijkstraStartTime = performance.now();
+      const dijkstraPaths = trafficPatterns.map(pattern => {
+        return calculateDijkstraPath(nodes, edges, pattern.source, pattern.target);
+      });
+      const dijkstraEndTime = performance.now();
+
+      setDijkstraMetrics({
+        averagePathLength: dijkstraPaths.reduce((acc, path) => acc + path.length, 0) / dijkstraPaths.length,
+        congestionLevel: Math.max(...Object.values(transformedTrafficPattern)),
+        pathsOptimized: dijkstraPaths.length,
+        executionTime: dijkstraEndTime - dijkstraStartTime
+      });
+
+      // Run Ant Colony algorithm
+      const antStartTime = performance.now();
+      await startSimulation();
+      const antEndTime = performance.now();
+
+      // Update Ant Colony metrics after simulation
+      setAntColonyMetrics(prev => ({
         ...prev,
-        trafficPattern: newTrafficPattern
+        executionTime: antEndTime - antStartTime
       }));
+
     } catch (error) {
-      console.error('Invalid JSON format for traffic pattern');
+      console.error('Error during simulation:', error);
+    } finally {
+      setIsSimulating(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-y-auto bg-gray-900">
+      {/* Run Simulation Button - Top center */}
+      <div className="flex justify-center py-4">
+        <button
+          onClick={runSimulation}
+          disabled={isSimulating}
+          className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium transition-all
+            ${isSimulating 
+              ? 'bg-gray-700 text-gray-300 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+        >
+          {isSimulating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Running Simulation...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-5 h-5" />
+              <span>Run Simulation</span>
+            </>
+          )}
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 p-4">
-        {/* Original Network */}
+        {/* Ant Colony Network */}
         <div className="bg-gray-800 rounded-lg p-4">
-          <h2 className="text-xl font-bold mb-4">Original Network</h2>
-          <div className="h-[500px] relative">
+          <h2 className="text-base font-medium mb-3 flex items-center">
+            <span className="w-3 h-3 rounded-full bg-green-400 mr-2"></span>
+            Ant Colony Optimization
+          </h2>
+          <div className="h-[400px] relative mb-4 bg-gray-900/50 rounded-lg border border-gray-700">
             <SimulationCanvas 
-              trafficPattern={originalTrafficPattern}
+              trafficPattern={transformedTrafficPattern}
+              isAntColony={true}
             />
           </div>
-          <TrafficHeatmap trafficPattern={originalTrafficPattern} />
-          <CongestionDisplay trafficPattern={originalTrafficPattern} />
+          <MetricsCard title="Ant Colony Metrics" metrics={antColonyMetrics} />
         </div>
 
-        {/* Modified Network */}
+        {/* Dijkstra Network */}
         <div className="bg-gray-800 rounded-lg p-4">
-          <h2 className="text-xl font-bold mb-4">Modified Network</h2>
-          <div className="h-[500px] relative">
+          <h2 className="text-base font-medium mb-3 flex items-center">
+            <span className="w-3 h-3 rounded-full bg-blue-400 mr-2"></span>
+            Dijkstra's Algorithm
+          </h2>
+          <div className="h-[400px] relative mb-4 bg-gray-900/50 rounded-lg border border-gray-700">
             <SimulationCanvas 
-              adjacencyList={modifiedNetwork.adjacencyList}
               trafficPattern={transformedTrafficPattern}
+              isAntColony={false}
             />
           </div>
-          <TrafficHeatmap trafficPattern={transformedTrafficPattern} />
-          <CongestionDisplay trafficPattern={transformedTrafficPattern} />
+          <MetricsCard title="Dijkstra Metrics" metrics={dijkstraMetrics} />
         </div>
       </div>
 
-      {/* Input Controls */}
-      <div className="grid grid-cols-2 gap-4 p-4">
-        <div className="bg-gray-800 rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-2">Modified Adjacency List</h3>
-          <textarea
-            className="w-full h-32 bg-gray-700 text-white p-2 rounded"
-            placeholder="Enter modified adjacency list in JSON format"
-            onChange={handleAdjacencyListChange}
-          />
-        </div>
-        <div className="bg-gray-800 rounded-lg p-4">
-          <h3 className="text-lg font-semibold mb-2">Modified Traffic Pattern</h3>
-          <textarea
-            className="w-full h-32 bg-gray-700 text-white p-2 rounded"
-            placeholder="Enter modified traffic pattern in JSON format"
-            onChange={handleTrafficPatternChange}
-          />
-        </div>
+      {/* Comparison Metrics */}
+      <div className="px-4 pb-4">
+        <ComparisonMetrics 
+          antColonyMetrics={antColonyMetrics}
+          dijkstraMetrics={dijkstraMetrics}
+        />
       </div>
     </div>
   );
