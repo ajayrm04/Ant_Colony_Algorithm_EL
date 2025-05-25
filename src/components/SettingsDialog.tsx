@@ -6,10 +6,12 @@ import { useNetworkStore } from '../store/networkStore';
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onClose: () => void
 }
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
   const {
+    
     evaporationRate,
     setEvaporationRate,
     pheromoneDeposit,

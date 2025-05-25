@@ -7,18 +7,22 @@ import { NodeType } from "../types/networkTypes"
 import { drawEdgeWithPheromone, drawAnt, drawNodeRipple, drawNode } from "../utils/animationUtils"
 import { spreadTrafficAmongRouters } from "../utils/analysisUtils"
 import TrafficSpread from "./TrafficSpread"
+import { motion } from "framer-motion"
+import { Activity, BarChart2 } from "lucide-react"
 
 
 interface SimulationCanvasProps {
   adjacencyList?: Record<string, string[]>;
   trafficPattern?: Record<string, number>;
   historicalRoutes?: any[];
+  onSpreadTraffic?: (pattern: Record<string, number>) => void;
 }
 
 const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   adjacencyList,
   trafficPattern,
-  historicalRoutes
+  historicalRoutes,
+  onSpreadTraffic
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -480,23 +484,31 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
     const currentEdges = adjacencyList ? modifiedEdges : edges;
     const currentTrafficPattern = adjacencyList && trafficPattern ? trafficPattern : Object.fromEntries(currentEdges.map(e => [`${e.source}-${e.target}`, e.traffic]));
     const newPattern = spreadTrafficAmongRouters(currentNodes, currentEdges, currentTrafficPattern);
-    setSpreadTrafficPattern(newPattern);
-    setShowSpreadTraffic(true);
+    if (onSpreadTraffic) {
+      onSpreadTraffic(newPattern);
+    }
   }
 
   return (
-    <div
+    <motion.div
       ref={containerRef}
-      className="relative w-full h-full border border-gray-700 bg-gray-950 rounded-lg overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="relative w-full h-full card overflow-hidden"
     >
       {/* Spread Traffic Button */}
-      <button
+      <motion.button
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
         onClick={handleSpreadTraffic}
-        className="absolute top-2 right-2 z-10 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded shadow"
-        style={{ zIndex: 10 }}
+        className="absolute top-4 right-4 z-10 btn-primary flex items-center space-x-2 shadow-lg"
       >
-        Spread Traffic
-      </button>
+        <BarChart2 className="w-4 h-4" />
+        <span>Spread Traffic</span>
+      </motion.button>
+
       {/* Grid lines overlay */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
@@ -510,9 +522,8 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
             y1="0"
             x2={`${i * 5}%`}
             y2="100%"
-            stroke="#888"
+            stroke="rgba(148, 163, 184, 0.1)"
             strokeWidth={1.2}
-            opacity={0.35}
             shapeRendering="crispEdges"
           />
         ))}
@@ -524,37 +535,95 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
             y1={`${i * 5}%`}
             x2="100%"
             y2={`${i * 5}%`}
-            stroke="#888"
+            stroke="rgba(148, 163, 184, 0.1)"
             strokeWidth={1.2}
-            opacity={0.35}
             shapeRendering="crispEdges"
           />
         ))}
       </svg>
+
       <canvas
-      ref={canvasRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onDoubleClick={handleDoubleClick}
-      className="w-full h-full cursor-crosshair"
-      style={{ position: "relative", zIndex: 2 }}
+        ref={canvasRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+        className="w-full h-full cursor-crosshair"
+        style={{ position: "relative", zIndex: 2 }}
       />
-      <div className="absolute bottom-2 left-2 bg-gray-800 bg-opacity-80 text-xs p-2 rounded text-gray-300 pointer-events-none select-none" style={{ zIndex: 3 }}>
-      <p>Double-click: Add device | Shift + Double-click: Add router</p>
-      <p>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</p>
-      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="absolute bottom-4 left-4 card p-3 text-xs text-gray-300 pointer-events-none select-none"
+        style={{ zIndex: 3 }}
+      >
+        <div className="space-y-1">
+          <p className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
+            <span>Double-click: Add device | Shift + Double-click: Add router</span>
+          </p>
+          <p className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 bg-primary-400 rounded-full" />
+            <span>Drag: Move nodes | Ctrl + Click: Set target | Click: Set source</span>
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Simulation Status */}
+      {(simulationRunning || simulationPhase === "complete") && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute top-4 left-4 card p-3 flex items-center space-x-3"
+          style={{ zIndex: 3 }}
+        >
+          <div className="flex items-center space-x-2">
+            <Activity className={`w-4 h-4 ${
+              simulationPhase === "exploration" 
+                ? "text-yellow-400" 
+                : simulationPhase === "convergence" 
+                ? "text-cyan-400" 
+                : "text-green-400"
+            }`} />
+            <div className="text-sm">
+              <div className="text-gray-300">Iteration: {iterations}/100</div>
+              <div className={`text-xs font-medium ${
+                simulationPhase === "exploration" 
+                  ? "text-yellow-400" 
+                  : simulationPhase === "convergence" 
+                  ? "text-cyan-400" 
+                  : "text-green-400"
+              }`}>
+                Phase: {simulationPhase}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Show TrafficSpread visualization if triggered */}
       {showSpreadTraffic && spreadTrafficPattern && (
-        <TrafficSpread
-          nodes={adjacencyList ? modifiedNodes : nodes}
-          edges={adjacencyList ? modifiedEdges : edges}
-          trafficPattern={spreadTrafficPattern}
-          onClose={() => setShowSpreadTraffic(false)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="relative w-full max-w-4xl mx-4"
+          >
+            <TrafficSpread
+              nodes={adjacencyList ? modifiedNodes : nodes}
+              edges={adjacencyList ? modifiedEdges : edges}
+              trafficPattern={spreadTrafficPattern}
+              onClose={() => setShowSpreadTraffic(false)}
+            />
+          </motion.div>
+        </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 

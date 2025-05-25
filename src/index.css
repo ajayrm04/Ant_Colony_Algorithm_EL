@@ -1,3 +1,187 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 41 59;
+    --foreground: 241 245 249;
+    --card: 30 41 59;
+    --card-foreground: 241 245 249;
+    --popover: 30 41 59;
+    --popover-foreground: 241 245 249;
+    --primary: 20 184 166;
+    --primary-foreground: 255 255 255;
+    --secondary: 99 102 241;
+    --secondary-foreground: 255 255 255;
+    --muted: 51 65 85;
+    --muted-foreground: 203 213 225;
+    --accent: 79 70 229;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 51 65 85;
+    --input: 51 65 85;
+    --ring: 20 184 166;
+  }
+}
+
+@layer base {
+  * {
+    border-color: rgb(51 65 85 / var(--tw-border-opacity, 1));
+  }
+  body {
+    background-image: linear-gradient(to bottom right, #111827, #1f2937, #111827);
+    color: #f9fafb;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    letter-spacing: 0.025em;
+    color: #f9fafb;
+  }
+  p {
+    font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    color: #f3f4f6;
+    line-height: 1.625;
+  }
+  label {
+    color: #f3f4f6;
+  }
+  input, textarea, select {
+    color: #f9fafb;
+    &::placeholder {
+      color: #9ca3af;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    background-color: rgb(31 41 55 / 0.5);
+    backdrop-filter: blur(4px);
+    border-width: 1px;
+    border-color: rgb(55 65 81 / 0.5);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+  .btn-primary {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    background-color: #14b8a6;
+    transition-property: all;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+  }
+  .btn-primary:hover {
+    background-color: #2dd4bf;
+    box-shadow: 0 10px 15px -3px rgb(20 184 166 / 0.2), 0 4px 6px -4px rgb(20 184 166 / 0.2);
+  }
+  .btn-secondary {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    background-color: #374151;
+    color: #f9fafb;
+    border-radius: 0.5rem;
+    transition-property: all;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    font-weight: 500;
+    letter-spacing: 0.025em;
+  }
+  .btn-secondary:hover {
+    background-color: #4b5563;
+  }
+  .input {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    background-color: #1f2937;
+    border-width: 1px;
+    border-color: #374151;
+    border-radius: 0.5rem;
+    color: #f9fafb;
+    transition-property: all;
+    transition-duration: 200ms;
+    outline: none;
+  }
+  .input::placeholder {
+    color: #9ca3af;
+  }
+  .input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2dd4bf;
+    border-color: transparent;
+  }
+  .label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #f3f4f6;
+    letter-spacing: 0.025em;
+  }
+  .badge {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 9999px;
+    letter-spacing: 0.05em;
+  }
+  .badge-primary {
+    background-color: rgb(20 184 166 / 0.2);
+    color: #5eead4;
+  }
+  .badge-secondary {
+    background-color: rgb(99 102 241 / 0.2);
+    color: #a5b4fc;
+  }
+  .badge-muted {
+    background-color: rgb(55 65 81 / 0.5);
+    color: #e5e7eb;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgb(31 41 55 / 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #374151;
+  border-radius: 9999px;
+  transition-property: background-color;
+  transition-duration: 150ms;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4b5563;
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}

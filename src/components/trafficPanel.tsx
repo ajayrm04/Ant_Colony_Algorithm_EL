@@ -3,13 +3,20 @@
 import type React from "react"
 import { useState } from "react"
 import { useNetworkStore } from "../store/networkStore"
-import { Activity, Plus, Route, Trash2, Volume } from "lucide-react"
+import { Activity, Plus, Route, Trash2, Volume, ArrowRight } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const TrafficPanel: React.FC = () => {
   const { 
-    edges,nodes, trafficPatterns, addTrafficPattern, updateTrafficPattern, removeTrafficPattern, simulationRunning,adjacencyList
- } =
-    useNetworkStore()
+    edges,
+    nodes, 
+    trafficPatterns, 
+    addTrafficPattern, 
+    updateTrafficPattern, 
+    removeTrafficPattern, 
+    simulationRunning,
+    adjacencyList
+  } = useNetworkStore()
 
   const [newSource, setNewSource] = useState<number | "">("")
   const [newTarget, setNewTarget] = useState<number | "">("")
@@ -17,99 +24,84 @@ const TrafficPanel: React.FC = () => {
   const [newPriority, setNewPriority] = useState<number>(5)
 
   const handleAddPattern = () => {
-    // console.log("yes")
     if (newSource === "" || newTarget === "" || newSource === newTarget) return
 
     addTrafficPattern({
       id: Date.now(),
       source: Number(newSource),
       target: Number(newTarget),
-      volume: newVolume / 10, // Scale to 0-1
+      volume: newVolume / 10,
       priority: newPriority,
       active: true,
-      routersInPath:{}
+      routersInPath: {}
     })
     
     const getShortestPathRouters = (sourceId: number, targetId: number) => {
-        // Build adjacency list from nodes
-        const adjacency: Record<number, { id: number; weight: number }[]> = {};
-        // Use adjacencyList from the store
-        Object.keys(adjacencyList).forEach((nodeId) => {
-            adjacency[Number(nodeId)] = adjacencyList[Number(nodeId)].map((neighborId: number) => ({
-                id: neighborId,
-                weight: 1,
-            }));
-        });
-        
-        console.log("hello\n")
-        console.log(adjacency)
-        // Dijkstra's algorithm
-        const distances: Record<number, number> = {};
-        const prev: Record<number, number | null> = {};
-        const visited: Set<number> = new Set();
-        nodes.forEach((node) => {
-            distances[node.id] = Infinity;
-            prev[node.id] = null;
-        });
-        distances[sourceId] = 0;
+      const adjacency: Record<number, { id: number; weight: number }[]> = {};
+      Object.keys(adjacencyList).forEach((nodeId) => {
+        adjacency[Number(nodeId)] = adjacencyList[Number(nodeId)].map((neighborId: number) => ({
+          id: neighborId,
+          weight: 1,
+        }));
+      });
+      
+      const distances: Record<number, number> = {};
+      const prev: Record<number, number | null> = {};
+      const visited: Set<number> = new Set();
+      nodes.forEach((node) => {
+        distances[node.id] = Infinity;
+        prev[node.id] = null;
+      });
+      distances[sourceId] = 0;
 
-        while (visited.size < nodes.length) {
-            let u: number | null = null;
-            let minDist = Infinity;
-            for (const nodeId in distances) {
-                if (!visited.has(Number(nodeId)) && distances[nodeId] < minDist) {
-                    minDist = distances[nodeId];
-                    u = Number(nodeId);
-                }
+      while (visited.size < nodes.length) {
+        let u: number | null = null;
+        let minDist = Infinity;
+        for (const nodeId in distances) {
+          if (!visited.has(Number(nodeId)) && distances[nodeId] < minDist) {
+            minDist = distances[nodeId];
+            u = Number(nodeId);
+          }
+        }
+        if (u === null || distances[u] === Infinity) break;
+        visited.add(u);
+
+        adjacency[u]?.forEach(({ id: v, weight }) => {
+          if (!visited.has(v)) {
+            const alt = distances[u] + weight;
+            if (alt < distances[v]) {
+              distances[v] = alt;
+              prev[v] = u;
             }
-            if (u === null || distances[u] === Infinity) break;
-            visited.add(u);
+          }
+        });
+      }
 
-            adjacency[u]?.forEach(({ id: v, weight }) => {
-                if (!visited.has(v)) {
-                    const alt = distances[u] + weight;
-                    if (alt < distances[v]) {
-                        distances[v] = alt;
-                        prev[v] = u;
-                    }
-                }
-            });
-        }
-
-        // Reconstruct path
-        const path: number[] = [];
-        let curr: number | null = targetId;
-        while (curr !== null) {
-            path.unshift(curr);
-            curr = prev[curr];
-        }
-        if (path[0] !== sourceId) return []; // No path found
-        // Exclude source and target, return routers in between
-        return path.slice(1, -1).map((id) => nodes.find((n) => n.id === id));
+      const path: number[] = [];
+      let curr: number | null = targetId;
+      while (curr !== null) {
+        path.unshift(curr);
+        curr = prev[curr];
+      }
+      if (path[0] !== sourceId) return [];
+      return path.slice(1, -1).map((id) => nodes.find((n) => n.id === id));
     };
 
     const routersInPath = getShortestPathRouters(Number(newSource), Number(newTarget));
     updateTrafficPattern(Date.now(), { routersInPath: routersInPath });
-    console.log("Routers in shortest path:", routersInPath);
+
     if (Array.isArray(routersInPath) && routersInPath.length > 0) {
-        // Assuming you have access to `edges` from the store or props
-        // If not, you may need to import/use it accordingly
-        if(!routersInPath[0]) console.log(routersInPath[0])
-        console.log(edges)
-        const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
-        edges.forEach(edge => {
-            if (routerIds.includes(edge.source)) {
-                edge.weight = (edge.weight || 0) + newVolume * 50;
-            }
-            if (routerIds.includes(edge.target)) {
-                edge.weight = (edge.weight || 0) + newVolume * 50;
-            }
-        });
+      const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
+      edges.forEach(edge => {
+        if (routerIds.includes(edge.source)) {
+          edge.weight = (edge.weight || 0) + newVolume * 50;
+        }
+        if (routerIds.includes(edge.target)) {
+          edge.weight = (edge.weight || 0) + newVolume * 50;
+        }
+      });
     }
 
-    console.log(newVolume)
-    console.log("Traffic Patterns", JSON.stringify(trafficPatterns, null, 2))
-    // Reset form
     setNewSource("")
     setNewTarget("")
     setNewVolume(5)
@@ -122,38 +114,65 @@ const TrafficPanel: React.FC = () => {
 
   const handleRemovePattern = (id: number) => {
     const pattern = trafficPatterns.find(tp => tp.id === id);
-    console.log(pattern?.volume)
-  if (!pattern) {
-    removeTrafficPattern(id)
-    return
-  }
-  const routersInPath = pattern.routersInPath
-  if (Array.isArray(routersInPath) && routersInPath.length > 0) {
-        // Assuming you have access to `edges` from the store or props
-        // If not, you may need to import/use it accordingly
-        const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
-        edges.forEach(edge => {
-            if (routerIds.includes(edge.source)) {
-                edge.weight = (edge.weight || 0) - pattern.volume * 500;
-            }
-            if (routerIds.includes(edge.target)) {
-                edge.weight = (edge.weight || 0) - pattern.volume * 500;
-            }
-        });
+    if (!pattern) {
+      removeTrafficPattern(id)
+      return
     }
-  removeTrafficPattern(id)
+    const routersInPath = pattern.routersInPath
+    if (Array.isArray(routersInPath) && routersInPath.length > 0) {
+      const routerIds = routersInPath.map(r => r?.id).filter(Boolean);
+      edges.forEach(edge => {
+        if (routerIds.includes(edge.source)) {
+          edge.weight = (edge.weight || 0) - pattern.volume * 500;
+        }
+        if (routerIds.includes(edge.target)) {
+          edge.weight = (edge.weight || 0) - pattern.volume * 500;
+        }
+      });
+    }
+    removeTrafficPattern(id)
   }
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3
+      }
+    }
+  };
 
   return (
-    <div className="p-4 border-t border-gray-700">
-      <div className="flex items-center mb-4">
-        <Activity className="w-5 h-5 text-yellow-400 mr-2" />
-        <h2 className="text-lg font-semibold">Traffic Patterns</h2>
-      </div>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="card p-4"
+    >
+      <motion.div 
+        variants={itemVariants}
+        className="flex items-center mb-4"
+      >
+        <Activity className="w-5 h-5 text-primary-400 mr-2" />
+        <h2 className="text-2xl font-semibold mb-6 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent tracking-tight font-sans">
+          Traffic Patterns
+        </h2>
+      </motion.div>
 
       <div className="space-y-4">
-        {/* Add new traffic pattern */}
-        <div className="bg-gray-800 p-3 rounded-lg">
+        <motion.div variants={itemVariants} className="card p-4">
           <h3 className="text-sm font-medium text-gray-300 mb-3">Add New Traffic Pattern</h3>
 
           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -162,7 +181,7 @@ const TrafficPanel: React.FC = () => {
               <select
                 value={newSource}
                 onChange={(e) => setNewSource(e.target.value ? Number(e.target.value) : "")}
-                className="w-full bg-gray-700 text-white rounded p-1 text-sm"
+                className="input w-full text-sm"
                 disabled={simulationRunning}
               >
                 <option value="">Select source</option>
@@ -179,7 +198,7 @@ const TrafficPanel: React.FC = () => {
               <select
                 value={newTarget}
                 onChange={(e) => setNewTarget(e.target.value ? Number(e.target.value) : "")}
-                className="w-full bg-gray-700 text-white rounded p-1 text-sm"
+                className="input w-full text-sm"
                 disabled={simulationRunning}
               >
                 <option value="">Select target</option>
@@ -200,8 +219,8 @@ const TrafficPanel: React.FC = () => {
                 min="1"
                 max="10"
                 value={newVolume}
-                onChange={(e) => setNewVolume(Number.parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                onChange={(e) => setNewVolume(Number(e.target.value))}
+                className="w-full accent-primary-500"
                 disabled={simulationRunning}
               />
             </div>
@@ -213,77 +232,80 @@ const TrafficPanel: React.FC = () => {
                 min="1"
                 max="10"
                 value={newPriority}
-                onChange={(e) => setNewPriority(Number.parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                onChange={(e) => setNewPriority(Number(e.target.value))}
+                className="w-full accent-primary-500"
                 disabled={simulationRunning}
               />
             </div>
           </div>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleAddPattern}
-            disabled={newSource === "" || newTarget === "" || newSource === newTarget || simulationRunning}
-            className={`flex items-center px-3 py-1 rounded text-sm ${
-              newSource === "" || newTarget === "" || newSource === newTarget || simulationRunning
-                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                : "bg-yellow-600 hover:bg-yellow-700 text-white"
-            }`}
+            disabled={simulationRunning}
+            className="btn-primary w-full flex items-center justify-center"
           >
-            <Plus className="w-3 h-3 mr-1" />
-            Add Traffic
-          </button>
-        </div>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Pattern
+          </motion.button>
+        </motion.div>
 
-        {/* Traffic patterns list */}
-        {trafficPatterns.length > 0 ? (
-          <div className="bg-gray-800 p-3 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-300 mb-2">Active Patterns</h3>
-
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {trafficPatterns.map((pattern) => {
-                const sourceNode = nodes.find((n) => n.id === pattern.source)
-                const targetNode = nodes.find((n) => n.id === pattern.target)
-
-                return (
-                  <div key={pattern.id} className="flex items-center justify-between bg-gray-700 p-2 rounded text-sm">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={pattern.active}
-                        onChange={(e) => handleTogglePattern(pattern.id, e.target.checked)}
-                        className="mr-2"
-                        disabled={simulationRunning}
-                      />
-                      <span>
-                        {sourceNode?.label || "Unknown"} → {targetNode?.label || "Unknown"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <span className="text-xs px-2 py-0.5 bg-yellow-900 rounded text-yellow-300">
-                        Vol: {Math.round(pattern.volume * 10)}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 bg-purple-900 rounded text-purple-300">
-                        Pri: {pattern.priority}
-                      </span>
-                      <button
-                        onClick={() => handleRemovePattern(pattern.id)}
-                        disabled={simulationRunning}
-                        className="text-gray-400 hover:text-red-400 disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-400 text-center py-2">No traffic patterns defined</div>
-        )}
+        <AnimatePresence>
+          {trafficPatterns.map((pattern) => (
+            <motion.div
+              key={pattern.id}
+              variants={itemVariants}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="card p-4"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Route className="w-4 h-4 text-primary-400" />
+                  <span className="text-sm font-medium">
+                    {nodes.find(n => n.id === pattern.source)?.label} 
+                    <ArrowRight className="w-3 h-3 mx-1 inline text-primary-400" />
+                    {nodes.find(n => n.id === pattern.target)?.label}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => handleTogglePattern(pattern.id, !pattern.active)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                      pattern.active ? "bg-green-500" : "bg-gray-600"
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full bg-white ${pattern.active ? "opacity-100" : "opacity-50"}`} />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => handleRemovePattern(pattern.id)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </motion.button>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4 text-xs text-gray-400">
+                <div className="flex items-center">
+                  <Volume className="w-3 h-3 mr-1" />
+                  {pattern.volume * 10}
+                </div>
+                <div className="flex items-center">
+                  <Activity className="w-3 h-3 mr-1" />
+                  {pattern.priority}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

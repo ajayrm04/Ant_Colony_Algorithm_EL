@@ -6,6 +6,7 @@ import { Play, Pause, RefreshCw, Trash2, Settings, Router, Laptop, BarChart } fr
 import SettingsDialog from "./SettingsDialog"
 import { NodeType, type Node } from "../types/networkTypes"
 import TrafficPanel from "./trafficPanel"
+import { motion } from "framer-motion"
 
 const ControlPanel: React.FC = () => {
   const {
@@ -68,7 +69,6 @@ const ControlPanel: React.FC = () => {
     const canvas = document.querySelector("canvas")
     if (!canvas) return
 
-    // Add the new router node
     const newRouterId = Date.now()
     const newRouter: Node = {
       id: newRouterId,
@@ -81,7 +81,6 @@ const ControlPanel: React.FC = () => {
     }
     addNode(newRouter)
 
-    // Add edges from the new router to all existing routers and devices
     nodes.forEach((node) => {
       const dist = Math.hypot(node.x - newRouter.x, node.y - newRouter.y)
       if (dist <= 500) {
@@ -101,112 +100,167 @@ const ControlPanel: React.FC = () => {
     })
   }
 
+  const buttonVariants = {
+    initial: { scale: 1 },
+    hover: { scale: 1.05 },
+    tap: { scale: 0.95 },
+  }
+
   return (
-    <div className="p-4 border-b border-gray-700">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="card p-4"
+    >
       <div className="flex flex-wrap gap-3 mb-4">
-        <button
-          onClick={simulationRunning ? stopSimulation : startSimulation}
-          disabled={selectedSourceNode === null || selectedTargetNode === null}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-            selectedSourceNode === null || selectedTargetNode === null
-              ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-              : simulationRunning
-                ? "bg-red-500 hover:bg-red-600 text-white"
-                : "bg-green-500 hover:bg-green-600 text-white"
-          }`}
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={simulationRunning ? stopSimulation : startSimulation}
+        disabled={selectedSourceNode === null || selectedTargetNode === null}
+        className={`flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+        selectedSourceNode === null || selectedTargetNode === null
+          ? "bg-gray-700/50 text-gray-400 cursor-not-allowed"
+          : simulationRunning
+          ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+          : "bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20"
+        }`}
+      >
+        {simulationRunning ? (
+        <>
+          <Pause className="w-4 h-4 mr-2" />
+          Stop
+        </>
+        ) : (
+        <>
+          <Play className="w-4 h-4 mr-2" />
+          Start
+        </>
+        )}
+      </motion.button>
+
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={resetSimulation}
+        className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-yellow-500 hover:bg-yellow-600 text-white transition-all duration-200 shadow-lg shadow-yellow-500/20"
+      >
+        <RefreshCw className="w-4 h-4 mr-2" />
+        Reset
+      </motion.button>
+
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={clearNetwork}
+        className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-gray-600 hover:bg-gray-700 text-white transition-all duration-200 shadow-lg shadow-gray-600/20"
+        disabled={simulationRunning}
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Clear
+      </motion.button>
+
+      <div className="flex items-center ml-auto space-x-2">
+        <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={() => setShowTraffic(!showTraffic)}
+        className={`flex items-center px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+          showTraffic 
+          ? "bg-yellow-600 text-white shadow-lg shadow-yellow-600/20" 
+          : "bg-gray-700/50 text-gray-300 hover:bg-gray-700"
+        }`}
         >
-          {simulationRunning ? (
-            <>
-              <Pause className="w-4 h-4 mr-2" />
-              Stop
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 mr-2" />
-              Start
-            </>
-          )}
-        </button>
+        <BarChart className="w-4 h-4 mr-1" />
+        Traffic
+        </motion.button>
 
-        <button
-          onClick={resetSimulation}
-          className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-yellow-500 hover:bg-yellow-600 text-white transition-colors"
+        <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={() => setShowCongestion(!showCongestion)}
+        className={`flex items-center px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+          showCongestion 
+          ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20" 
+          : "bg-gray-700/50 text-gray-300 hover:bg-gray-700"
+        }`}
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Reset
-        </button>
-
-        <button
-          onClick={clearNetwork}
-          className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-gray-600 hover:bg-gray-700 text-white transition-colors"
-          disabled={simulationRunning}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Clear
-        </button>
-
-        <div className="flex items-center ml-auto">
-          <button
-            onClick={() => setShowTraffic(!showTraffic)}
-            className={`flex items-center px-3 py-2 rounded-lg font-medium text-sm mr-2 transition-colors ${
-              showTraffic ? "bg-yellow-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <BarChart className="w-4 h-4 mr-1" />
-            Traffic
-          </button>
-
-          <button
-            onClick={() => setShowCongestion(!showCongestion)}
-            className={`flex items-center px-3 py-2 rounded-lg font-medium text-sm mr-2 transition-colors ${
-              showCongestion ? "bg-purple-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-            }`}
-          >
-            <BarChart className="w-4 h-4 mr-1" />
-            Congestion
-          </button>
-        </div>
+        <BarChart className="w-4 h-4 mr-1" />
+        Congestion
+        </motion.button>
+      </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
-        <button
-          onClick={handleAddDevice}
-          className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-purple-500 hover:bg-purple-600 text-white transition-colors"
-          disabled={simulationRunning}
-        >
-          <Laptop className="w-4 h-4 mr-2" />
-          Add Device
-        </button>
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={handleAddDevice}
+        className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-purple-500 hover:bg-purple-600 text-white transition-all duration-200 shadow-lg shadow-purple-500/20"
+        disabled={simulationRunning}
+      >
+        <Laptop className="w-4 h-4 mr-2" />
+        Add Device
+      </motion.button>
 
-        <button
-          onClick={handleAddRouter}
-          className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-          disabled={simulationRunning}
-        >
-          <Router className="w-4 h-4 mr-2" />
-          Add Router
-        </button>
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={handleAddRouter}
+        className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-blue-500 hover:bg-blue-600 text-white transition-all duration-200 shadow-lg shadow-blue-500/20"
+        disabled={simulationRunning}
+      >
+        <Router className="w-4 h-4 mr-2" />
+        Add Router
+      </motion.button>
 
-        <button
-          onClick={() => setShowSettings(true)}
-          className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-gray-600 hover:bg-gray-700 text-white transition-colors ml-auto"
-        >
-          <Settings className="w-4 h-4 mr-2" />
-          Settings
-        </button>
+      <motion.button
+        variants={buttonVariants}
+        initial="initial"
+        whileHover="hover"
+        whileTap="tap"
+        onClick={() => setShowSettings(true)}
+        className="flex items-center px-4 py-2 rounded-lg font-medium text-sm bg-gray-600 hover:bg-gray-700 text-white transition-all duration-200 shadow-lg shadow-gray-600/20 ml-auto"
+      >
+        <Settings className="w-4 h-4 mr-2" />
+        Settings
+      </motion.button>
       </div>
 
-      <div className="text-xs text-gray-400 bg-gray-800 p-2 rounded">
-        <span className="font-medium">Mode:</span>{" "}
-        {simulationMode === "standard" ? "Standard (Shortest Path)" : "Congestion Aware"}
-      </div>
+      <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
+      className="text-xs text-gray-400 bg-gray-800/50 p-3 rounded-lg backdrop-blur-sm"
+      >
+      <span className="font-medium">Mode:</span>{" "}
+      <span className="text-primary-400">{simulationMode}</span>
+      </motion.div>
 
-      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-      {/* Show TrafficPanel if showTraffic is true */}
-      
-      {showTraffic && <TrafficPanel />}
-    </div>
+      {showSettings && (
+      <SettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        onClose={() => setShowSettings(false)}
+      />
+      )}
+    </motion.div>
   )
 }
+
 export default ControlPanel
