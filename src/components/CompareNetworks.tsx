@@ -3,6 +3,7 @@ import { useNetworkStore } from '../store/networkStore';
 import SimulationCanvas from './SimulationCanvas';
 import { calculateDijkstraPath } from '../utils/dijkstra';
 import { Play, Loader2 } from 'lucide-react';
+import DijkstraCanvas from './DijikastraCanvas';
 
 interface MetricsData {
   averagePathLength: number;
@@ -199,10 +200,7 @@ const CompareNetworks: React.FC = () => {
             Dijkstra's Algorithm
           </h2>
           <div className="h-[400px] relative mb-4 bg-gray-900/50 rounded-lg border border-gray-700">
-            <SimulationCanvas 
-              trafficPattern={transformedTrafficPattern}
-              isAntColony={false}
-            />
+            <DijkstraCanvas/>
           </div>
           <MetricsCard title="Dijkstra Metrics" metrics={dijkstraMetrics} />
         </div>
