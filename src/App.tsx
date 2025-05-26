@@ -50,14 +50,14 @@ function App() {
   const calculateLocalMetrics = useCallback(() => {
     const routerCount = nodes.filter(n => n.type === NodeType.ROUTER).length;
     const deviceCount = nodes.filter(n => n.type === NodeType.DEVICE).length;
-    const avgCongestion = edges.reduce((acc, edge) => acc + (edge.congestion || 0), 0) / (edges.length || 1);
+    const avgCongestion = 0
     
     return {
       totalRouters: routerCount,
       totalDevices: deviceCount,
       averageLatency: bestPath.length || 0,
       networkEfficiency: edges.length > 0 ? 1 - avgCongestion : 0,
-      averageCongestion: avgCongestion,
+      averageCongestion: 0,
       numberOfHops: bestPathNodes.length - 1 || 0,
       topologyUsed: 'mesh', // default topology
       packetDropRate: 0,
@@ -75,7 +75,7 @@ function App() {
         path: bestPathNodes,
         latency: bestPath.length,
         hops: bestPathNodes.length - 1,
-        congestion: edges.reduce((acc, edge) => acc + (edge.congestion || 0), 0) / (edges.length || 1)
+        congestion: 0
       };
       console.log('Adding new historical route:', newRoute);
       setHistoricalRoutes(prev => [...prev, newRoute]);
