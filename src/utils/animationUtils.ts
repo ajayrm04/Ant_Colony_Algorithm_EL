@@ -10,7 +10,7 @@ export function updateAntPositions(
   edges: Edge[],
   speed: number,
 ): AntPosition[] {
-  const progressIncrement = 0.002 * speed // Reduced from 0.005 to 0.002 for slower movement
+  const progressIncrement = 0.01 * speed
 
   return antPositions.map((ant) => {
     const fromNode = nodes.find((n) => n.id === ant.from)
@@ -18,41 +18,13 @@ export function updateAntPositions(
 
     if (!fromNode || !toNode) return ant
 
-    const newProgress = Math.min(1, ant.progress + progressIncrement)
+    const newProgress = ant.progress + progressIncrement
 
-    // Use cubic easing for smoother acceleration and deceleration
+    // Use easing function for smoother movement
     const easedProgress = easeInOutCubic(newProgress)
 
-    // Calculate new position with proper interpolation along the edge
     const newX = fromNode.x + (toNode.x - fromNode.x) * easedProgress
     const newY = fromNode.y + (toNode.y - fromNode.y) * easedProgress
-
-    // If ant has reached its destination, find the next edge in the path
-    if (newProgress >= 1) {
-      // Find the edge that connects to the next node
-      const nextEdge = edges.find(
-        (edge) =>
-          (edge.source === ant.to || edge.target === ant.to) &&
-          (edge.source !== ant.from && edge.target !== ant.from)
-      )
-
-      if (nextEdge) {
-        // Determine the next node (the one that's not the current 'to' node)
-        const nextNodeId = nextEdge.source === ant.to ? nextEdge.target : nextEdge.source
-        const nextNode = nodes.find((n) => n.id === nextNodeId)
-
-        if (nextNode) {
-          return {
-            ...ant,
-            from: ant.to,
-            to: nextNodeId,
-            progress: 0,
-            x: toNode.x, // Start from current node
-            y: toNode.y,
-          }
-        }
-      }
-    }
 
     return {
       ...ant,
@@ -64,12 +36,10 @@ export function updateAntPositions(
 }
 
 /**
- * Enhanced cubic easing function for smoother ant movement
+ * Cubic easing function for smooth ant movement
  */
 function easeInOutCubic(x: number): number {
-  return x < 0.5
-    ? 4 * x * x * x
-    : 1 - Math.pow(-2 * x + 2, 3) / 2
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
 }
 
 /**
@@ -177,48 +147,39 @@ export function drawEdgeWithPheromone(
  * Draws an ant with dynamic effects
  */
 export function drawAnt(ctx: CanvasRenderingContext2D, x: number, y: number, progress: number): void {
-  // Enhanced pulsing effect with smoother transitions
-  const pulseScale = 1 + Math.sin(progress * Math.PI * 4) * 0.15
-  const size = 5 * pulseScale // Slightly larger ant
+  // Pulsing effect
+  const pulseScale = 1 + Math.sin(progress * Math.PI * 2) * 0.2
+  const size = 4 * pulseScale
 
-  // Improved glowing trail with gradient
-  const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 4)
-  gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)')
-  gradient.addColorStop(0.5, 'rgba(255, 215, 0, 0.1)')
-  gradient.addColorStop(1, 'rgba(255, 215, 0, 0)')
-
+  // Glowing trail
   ctx.beginPath()
-  ctx.arc(x, y, size * 4, 0, 2 * Math.PI)
-  ctx.fillStyle = gradient
-  ctx.filter = 'blur(4px)'
+  ctx.arc(x, y, size * 2, 0, 2 * Math.PI)
+  ctx.fillStyle = "rgba(255, 215, 0, 0.1)"
+  ctx.filter = "blur(2px)"
   ctx.fill()
-  ctx.filter = 'none'
+  ctx.filter = "none"
 
-  // Main ant body with enhanced glow
+  // Main ant body
   ctx.beginPath()
   ctx.arc(x, y, size, 0, 2 * Math.PI)
-  ctx.fillStyle = 'rgba(255, 215, 0, 1)' // More solid color
-  ctx.shadowColor = 'rgba(255, 215, 0, 0.8)'
-  ctx.shadowBlur = 15
+  ctx.fillStyle = "rgba(255, 215, 0, 0.8)"
+  ctx.shadowColor = "rgba(255, 215, 0, 0.5)"
+  ctx.shadowBlur = 10
   ctx.fill()
 
   // Reset shadow
+  ctx.shadowColor = "transparent"
   ctx.shadowBlur = 0
 
-  // Enhanced movement trail with gradient
-  const trailLength = 6 // Longer trail
+  // Movement trail
+  const trailLength = 3
   for (let i = 1; i <= trailLength; i++) {
-    const trailOpacity = 0.5 * (1 - i / trailLength)
-    const trailSize = size * (1 - (i / trailLength) * 0.7)
-
-    const trailGradient = ctx.createRadialGradient(x, y, 0, x, y, trailSize * 2)
-    trailGradient.addColorStop(0, `rgba(255, 215, 0, ${trailOpacity})`)
-    trailGradient.addColorStop(0.5, `rgba(255, 215, 0, ${trailOpacity * 0.5})`)
-    trailGradient.addColorStop(1, `rgba(255, 215, 0, 0)`)
+    const trailOpacity = 0.3 * (1 - i / trailLength)
+    const trailSize = size * (1 - (i / trailLength) * 0.5)
 
     ctx.beginPath()
     ctx.arc(x, y, trailSize, 0, 2 * Math.PI)
-    ctx.fillStyle = trailGradient
+    ctx.fillStyle = `rgba(255, 215, 0, ${trailOpacity})`
     ctx.fill()
   }
 }

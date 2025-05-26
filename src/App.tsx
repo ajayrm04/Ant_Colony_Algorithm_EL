@@ -198,23 +198,14 @@ function App() {
             transition={{ duration: 0.3 }}
             className="flex-1 flex flex-col md:flex-row gap-6 p-6"
           >
-            <div className="flex-1 relative card overflow-hidden">
+            <div className="flex-1 p4 relative">
+              
               <SimulationCanvas 
                 onSpreadTraffic={(pattern) => {
                   setSpreadTrafficPattern(pattern);
                   setShowSpreadTraffic(true);
                 }}
               />
-              {simulationRunning && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="absolute top-5 right-5 badge badge-primary flex items-center space-x-2"
-                >
-                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-pulse" />
-                  <span>Simulation Running</span>
-                </motion.div>
-              )}
             </div>
             <div className="w-full md:w-80 lg:w-96 space-y-6">
               <ControlPanel />
